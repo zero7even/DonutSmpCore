@@ -47,6 +47,9 @@ The goal is to reduce the number of separate plugins required for a modern SMP s
   <img src="uds1.png" alt="UltimateDonutSmp screenshot 1" width="32%">
   <img src="uds2.png" alt="UltimateDonutSmp screenshot 2" width="32%">
   <img src="uds3.png" alt="UltimateDonutSmp screenshot 3" width="32%">
+  <img src="uds4.png" alt="UltimateDonutSmp screenshot 4" width="32%">
+  <img src="uds5.png" alt="UltimateDonutSmp screenshot 5" width="32%">
+  <img src="uds6.png" alt="UltimateDonutSmp screenshot 6" width="32%">
 </p>
 
 
