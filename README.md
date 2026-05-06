@@ -6,16 +6,18 @@
 
 <p align="center">
   Premium Paper plugin for DonutSMP-style Minecraft servers.
-  Economy, PvP, marketplace, staff tools, menus, network utilities, and licensing in one production-focused plugin.
+  Economy, PvP, marketplace, staff tools, menus, and network utilities in one production-focused plugin.
 </p>
 
 <p align="center">
   <img alt="Java 21" src="https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white">
   <img alt="Paper" src="https://img.shields.io/badge/Platform-Paper_MC-2ea44f?style=for-the-badge">
-  <img alt="Maven" src="https://img.shields.io/badge/Build-Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white">
   <img alt="Premium" src="https://img.shields.io/badge/Distribution-Premium-gold?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge">
 </p>
+
+> [!IMPORTANT]
+> This is proprietary premium software. Access, use, modification, and distribution are limited to authorized maintainers, customers, and license holders only.
 
 > [!IMPORTANT]
 > This plugin requires a valid license key to be used. You can get a free 7-day demo license from our Discord server, and you can also purchase the full license.
@@ -40,7 +42,15 @@ The goal is to reduce the number of separate plugins required for a modern SMP s
 | Marketplace | Auction House, Orders board, Billford trades, crates, key menus |
 | Staff tools | Staff mode, freeze, vanish, invsee, profile viewer, punishment history, alts, reports, helpop |
 | Network | Redis staff chat, network alerts, server status menu, Discord webhook support |
-| Operations | Config reloads, stats wipe tools, optimization controls, database support, license validation |
+| Operations | Config reloads, stats wipe tools, optimization controls, and database support |
+
+## Screenshots
+
+<p align="center">
+  <img src="uds1.png" alt="UltimateDonutSmp screenshot 1" width="32%">
+  <img src="uds2.png" alt="UltimateDonutSmp screenshot 2" width="32%">
+  <img src="uds3.png" alt="UltimateDonutSmp screenshot 3" width="32%">
+</p>
 
 Additional media files are included in the repository for product pages, release notes, and premium listing assets.
 
@@ -50,7 +60,6 @@ Additional media files are included in the repository for product pages, release
 | --- | --- |
 | Java | Java 21 |
 | Server | Paper or a compatible Paper-based server matching the configured API target |
-| Build tool | Maven |
 | Storage | SQLite by default, with MySQL and MongoDB-backed modes available |
 | Optional network layer | Redis for cross-server staff chat, reports, helpop, and server status |
 
@@ -70,31 +79,14 @@ The plugin can run without every soft dependency, but enabling them unlocks deep
 1. Stop the Minecraft server.
 2. Place the licensed plugin jar into the server `plugins/` directory.
 3. Start the server once so the default configuration files are generated.
-4. Configure `plugins/UltimateDonutSmp/license.yml` with the issued license data.
-5. Configure storage in `database.yml`.
-6. Review the core gameplay files such as `config.yml`, `menus.yml`, `shop.yml`, `worth.yml`, `rtp.yml`, and `messages.yml`.
-7. Restart the server after first setup.
+4. Configure storage in `database.yml`.
+5. Review the core gameplay files such as `config.yml`, `menus.yml`, `shop.yml`, `worth.yml`, `rtp.yml`, and `messages.yml`.
+6. Restart the server after first setup.
 
 For production networks, MySQL plus Redis is recommended. For a single-server setup, SQLite is usually enough.
 
-## Build
-
-Authorized maintainers can build the plugin with Maven:
-
-```bash
-mvn clean package -Dultimatedonutsmp.license.publicKey="<ED25519_PUBLIC_KEY_BASE64>"
-```
-
-On Windows, the included build script can be used:
-
-```bat
-build.bat
-```
-
-Build artifacts are written to `target/`. Use the shaded jar for deployment when dependency relocation is required.
-
 > [!WARNING]
-> Only the public license verification key should be bundled or committed. Private signing keys, customer license files, database credentials, Discord tokens, and Redis passwords must never be committed.
+> Do not share private customer files, database credentials, Discord tokens, Redis passwords, or other sensitive server data.
 
 ## Configuration
 
@@ -115,7 +107,6 @@ Build artifacts are written to `target/`. Use the shaded jar for deployment when
 | `crates.yml` | Crates, keys, rewards, animations, holograms, and particles |
 | `spawners.yml` | Donut-style spawners, anti-ESP, storage, drops, and menus |
 | `staff-mode.yml` | Staff mode hotbar, vanish, better view, staff list, and moderation menus |
-| `license.yml` | Runtime license configuration |
 
 Most player-facing text, GUI layouts, prices, cooldowns, permissions, and feature toggles are configurable without recompiling the plugin.
 
@@ -135,18 +126,7 @@ UltimateDonutSmp registers a large command surface. Common entry points include:
 | Network support | `/staffchat`, `/helpop`, `/report`, `/servers` |
 | Admin | `/ultimatedonutsmp`, `/uds`, `/arena`, `/ffaarena`, `/portalmanager`, `/cuboid`, `/amethysttool` |
 
-See `src/main/resources/plugin.yml` for the complete command and permission registration.
-
-## Repository Layout
-
-```text
-src/main/java/com/bx/ultimateDonutSmp/   Java source code
-src/main/resources/                      plugin.yml and default configuration files
-docs/                                    Feature documentation and system plans
-discord-bot-example/                     Optional external Discord bot reference
-tools/                                   Internal license tooling
-target/                                  Maven build output
-```
+The complete command and permission list is available in the packaged plugin metadata and customer documentation.
 
 ## Documentation
 
@@ -154,15 +134,12 @@ target/                                  Maven build output
 - [Changelog](CHANGELOG.md)
 - Individual system plans are available in the `docs/` directory.
 
-## Premium Licensing
+## Commercial Use
 
 UltimateDonutSmp is proprietary commercial software.
 
-- This repository does not grant an open-source license.
-- Source access does not transfer ownership or redistribution rights.
 - The plugin may only be used by authorized license holders.
-- Redistribution, resale, sublicensing, public mirroring, or disclosure of source code is not permitted without written permission.
-- Runtime license checks are part of the product and must not be removed or bypassed.
+- Redistribution, resale, sublicensing, public mirroring, or unauthorized sharing is not permitted without written permission.
 
 Copyright (c) 2026 UltimateDonutSmp. All rights reserved.
 
@@ -170,11 +147,11 @@ Copyright (c) 2026 UltimateDonutSmp. All rights reserved.
 
 Support is handled through the official purchase or customer support channel. When reporting an issue, include:
 
-- Plugin version and jar build
+- Plugin version and jar file name
 - Server software and version
 - Java version
 - Relevant configuration snippets with secrets removed
 - Console errors or stack traces
 - Steps to reproduce the issue
 
-Do not share license keys, database credentials, Redis passwords, Discord tokens, or private customer files in public channels.
+Do not share private customer files, database credentials, Redis passwords, Discord tokens, or other sensitive server data in public channels.
