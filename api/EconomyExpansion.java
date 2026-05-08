@@ -48,7 +48,7 @@ public class EconomyExpansion extends PlaceholderExpansion {
     public @NotNull String getAuthor() { return "UltimateDonutSmp"; }
 
     @Override
-    public @NotNull String getVersion() { return "1.0"; }
+    public @NotNull String getVersion() { return "1.1"; }
 
     @Override
     public boolean persist() { return true; }
