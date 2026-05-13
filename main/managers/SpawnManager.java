@@ -63,16 +63,12 @@ public class SpawnManager {
         configuredAfkAreas = loadAreas("AFK-MENU", AreaType.AFK);
     }
 
-    public void setSpawnLocation(Location loc) {
-        this.spawnLocation = loc;
-        plugin.getConfigManager().getConfig().set("LOCATIONS.SPAWN-LOCATION", LocationUtils.serialize(loc));
-        plugin.saveConfig();
+    public boolean setSpawnLocation(Location loc) {
+        return setSetupLocation(AreaType.SPAWN, loc, "LOCATIONS.SPAWN-LOCATION");
     }
 
-    public void setAfkLocation(Location loc) {
-        this.afkLocation = loc;
-        plugin.getConfigManager().getConfig().set("LOCATIONS.AFK-LOCATION", LocationUtils.serialize(loc));
-        plugin.saveConfig();
+    public boolean setAfkLocation(Location loc) {
+        return setSetupLocation(AreaType.AFK, loc, "LOCATIONS.AFK-LOCATION");
     }
 
     public List<TeleportArea> getSpawnAreas() {
@@ -405,6 +401,68 @@ public class SpawnManager {
             warn(path + " has an invalid location override '" + serialized + "'. Falling back to cuboid teleport.");
         }
         return parsed;
+    }
+
+    private boolean setSetupLocation(AreaType type, Location location, String configPath) {
+        String serialized = LocationUtils.serialize(location);
+        FileConfiguration config = plugin.getConfigManager().getConfig();
+        FileConfiguration menus = plugin.getConfigManager().getMenus();
+
+        if (type == AreaType.SPAWN) {
+            this.spawnLocation = location == null ? null : location.clone();
+        } else {
+            this.afkLocation = location == null ? null : location.clone();
+        }
+
+        config.set(configPath, serialized);
+        String firstAreaPath = findFirstMenuAreaPath(type);
+        if (firstAreaPath != null) {
+            menus.set(firstAreaPath + ".LOCATION", serialized);
+        } else {
+            plugin.getLogger().warning("[SpawnManager] Could not find a configured "
+                    + type.name().toLowerCase() + " menu area to update.");
+        }
+
+        try {
+            plugin.saveConfig();
+        } catch (RuntimeException exception) {
+            plugin.getLogger().warning("[SpawnManager] Failed to save config.yml: " + exception.getMessage());
+            return false;
+        }
+
+        boolean savedMenus = plugin.getConfigManager().saveMenus();
+        if (!savedMenus) {
+            return false;
+        }
+
+        load();
+        return true;
+    }
+
+    private String findFirstMenuAreaPath(AreaType type) {
+        FileConfiguration menus = plugin.getConfigManager().getMenus();
+        String menuPath = type == AreaType.SPAWN ? "SPAWN-MENU" : "AFK-MENU";
+        ConfigurationSection areasSection = menus.getConfigurationSection(menuPath + ".AREAS");
+        if (areasSection == null) {
+            return null;
+        }
+
+        String selectedKey = null;
+        int selectedSlot = Integer.MAX_VALUE;
+        for (String key : areasSection.getKeys(false)) {
+            ConfigurationSection areaSection = areasSection.getConfigurationSection(key);
+            if (areaSection == null || !areaSection.getBoolean("ENABLED", true)) {
+                continue;
+            }
+
+            int slot = areaSection.getInt("SLOT", Integer.MAX_VALUE);
+            if (selectedKey == null || slot < selectedSlot) {
+                selectedKey = key;
+                selectedSlot = slot;
+            }
+        }
+
+        return selectedKey == null ? null : menuPath + ".AREAS." + selectedKey;
     }
 
     public Location makeSafeDestination(Location location) {
