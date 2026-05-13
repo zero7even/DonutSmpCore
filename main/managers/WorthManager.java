@@ -6,9 +6,6 @@ import com.bx.ultimateDonutSmp.models.SellCategory;
 import com.bx.ultimateDonutSmp.models.WorthResult;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import com.bx.ultimateDonutSmp.utils.NumberUtils;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -353,10 +350,10 @@ public class WorthManager {
         }
 
         PersistentDataContainer updatedContainer = updatedMeta.getPersistentDataContainer();
-        List<Component> originalLore = readOriginalLore(updatedMeta);
+        List<String> originalLore = readOriginalLore(updatedMeta);
         updatedContainer.remove(worthDisplayAppliedKey);
         updatedContainer.remove(worthDisplayOriginalLoreKey);
-        updatedMeta.lore(originalLore);
+        updatedMeta.setLore(originalLore);
         updated.setItemMeta(updatedMeta);
         return updated;
     }
@@ -738,14 +735,14 @@ public class WorthManager {
             return item;
         }
 
-        List<Component> currentLore = meta.lore();
-        List<Component> originalLore = readOriginalLore(meta);
+        List<String> currentLore = meta.getLore();
+        List<String> originalLore = readOriginalLore(meta);
         if (originalLore == null) {
             originalLore = currentLore;
         }
         originalLore = stripExistingWorthLore(originalLore);
 
-        List<Component> desiredLore = originalLore == null ? new ArrayList<>() : new ArrayList<>(originalLore);
+        List<String> desiredLore = originalLore == null ? new ArrayList<>() : new ArrayList<>(originalLore);
         desiredLore.add(ColorUtils.toComponent(loreLine));
 
         PersistentDataContainer container = meta.getPersistentDataContainer();
@@ -767,7 +764,7 @@ public class WorthManager {
         PersistentDataContainer updatedContainer = updatedMeta.getPersistentDataContainer();
         updatedContainer.set(worthDisplayAppliedKey, PersistentDataType.BYTE, (byte) 1);
         updatedContainer.set(worthDisplayOriginalLoreKey, PersistentDataType.STRING, serializedOriginalLore);
-        updatedMeta.lore(desiredLore);
+        updatedMeta.setLore(desiredLore);
         updated.setItemMeta(updatedMeta);
         return updated;
     }
@@ -776,7 +773,7 @@ public class WorthManager {
         return item != null && plugin.getAmethystToolsManager().isAmethystTool(item);
     }
 
-    private List<Component> readOriginalLore(ItemMeta meta) {
+    private List<String> readOriginalLore(ItemMeta meta) {
         PersistentDataContainer container = meta.getPersistentDataContainer();
         String stored = container.get(worthDisplayOriginalLoreKey, PersistentDataType.STRING);
         if (stored != null) {
@@ -784,10 +781,10 @@ public class WorthManager {
         }
 
         if (!container.has(worthDisplayAppliedKey, PersistentDataType.BYTE)) {
-            return meta.lore();
+            return meta.getLore();
         }
 
-        List<Component> currentLore = meta.lore();
+        List<String> currentLore = meta.getLore();
         if (currentLore == null || currentLore.isEmpty()) {
             return null;
         }
@@ -795,7 +792,7 @@ public class WorthManager {
         return new ArrayList<>(currentLore.subList(0, currentLore.size() - 1));
     }
 
-    private String serializeLore(List<Component> lore) {
+    private String serializeLore(List<String> lore) {
         if (lore == null) {
             return NULL_LORE;
         }
@@ -804,14 +801,13 @@ public class WorthManager {
         }
 
         List<String> encoded = new ArrayList<>();
-        for (Component component : lore) {
-            String json = GsonComponentSerializer.gson().serialize(component);
-            encoded.add(Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8)));
+        for (String line : lore) {
+            encoded.add(Base64.getEncoder().encodeToString((line == null ? "" : line).getBytes(StandardCharsets.UTF_8)));
         }
         return String.join(LORE_SEPARATOR, encoded);
     }
 
-    private List<Component> deserializeLore(String serialized) {
+    private List<String> deserializeLore(String serialized) {
         if (serialized == null) {
             return null;
         }
@@ -822,23 +818,22 @@ public class WorthManager {
             return new ArrayList<>();
         }
 
-        List<Component> lore = new ArrayList<>();
+        List<String> lore = new ArrayList<>();
         for (String token : serialized.split(LORE_SEPARATOR, -1)) {
-            String json = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
-            lore.add(GsonComponentSerializer.gson().deserialize(json));
+            lore.add(new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8));
         }
         return lore;
     }
 
-    private List<Component> stripExistingWorthLore(List<Component> lore) {
+    private List<String> stripExistingWorthLore(List<String> lore) {
         if (lore == null || lore.isEmpty()) {
             return lore;
         }
 
         Pattern worthLorePattern = buildWorthLorePattern();
-        List<Component> sanitized = new ArrayList<>();
+        List<String> sanitized = new ArrayList<>();
         boolean changed = false;
-        for (Component line : lore) {
+        for (String line : lore) {
             if (isWorthLoreLine(line, worthLorePattern)) {
                 changed = true;
                 continue;
@@ -848,8 +843,8 @@ public class WorthManager {
         return changed ? sanitized : lore;
     }
 
-    private boolean isWorthLoreLine(Component line, Pattern worthLorePattern) {
-        String plain = PlainTextComponentSerializer.plainText().serialize(line);
+    private boolean isWorthLoreLine(String line, Pattern worthLorePattern) {
+        String plain = ColorUtils.strip(line);
         if (containsBrokenWorthPlaceholder(plain)) {
             return true;
         }

@@ -254,7 +254,7 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ColorUtils.toComponent("&8&m---------- &bUltimateDonutSmp Setup &8&m----------"));
         sendCheck(sender, isJava21OrNewer(), "Java",
                 System.getProperty("java.version", "unknown") + " (Java 21+ required)");
-        sendCheck(sender, isCompatibleServer(), "Server",
+        sendCheck(sender, isPaperLikeServer(), "Server",
                 plugin.getServer().getName() + " " + plugin.getServer().getBukkitVersion());
         sendCheck(sender, isDatabaseConnected(), "Storage",
                 database.getString("DATABASE.TYPE", "SQLITE").toUpperCase(Locale.ROOT) + " configured");
@@ -402,12 +402,9 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private boolean isCompatibleServer() {
+    private boolean isPaperLikeServer() {
         String serverName = plugin.getServer().getName().toLowerCase(Locale.ROOT);
-        return serverName.contains("folia")
-                || serverName.contains("paper")
-                || serverName.contains("purpur")
-                || serverName.contains("pufferfish");
+        return serverName.contains("paper") || serverName.contains("purpur") || serverName.contains("pufferfish");
     }
 
     private boolean isDatabaseConnected() {

@@ -176,7 +176,7 @@ public class WorthDisplayListener implements Listener {
             return;
         }
 
-        plugin.getFoliaScheduler().runEntityLater(player, () -> {
+        plugin.getSpigotScheduler().runEntityLater(player, () -> {
             pendingRefreshes.remove(uuid);
             if (!player.isOnline()) {
                 return;
@@ -186,7 +186,7 @@ public class WorthDisplayListener implements Listener {
     }
 
     private void queueClear(Player player, long delayTicks) {
-        plugin.getFoliaScheduler().runEntityLater(player, () -> {
+        plugin.getSpigotScheduler().runEntityLater(player, () -> {
             if (!player.isOnline()) {
                 return;
             }
@@ -198,7 +198,7 @@ public class WorthDisplayListener implements Listener {
     }
 
     private void startDirtySyncTask() {
-        plugin.getFoliaScheduler().runGlobalTimer(this::syncDirtyPlayers, 1L, 1L);
+        plugin.getSpigotScheduler().runGlobalTimer(this::syncDirtyPlayers, 1L, 1L);
     }
 
     private void syncDirtyPlayers() {
@@ -214,7 +214,7 @@ public class WorthDisplayListener implements Listener {
                 continue;
             }
 
-            plugin.getFoliaScheduler().runEntity(player, () -> {
+            plugin.getSpigotScheduler().runEntity(player, () -> {
                 if (!player.isOnline()) {
                     return;
                 }

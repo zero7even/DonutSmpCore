@@ -425,12 +425,13 @@ public class RTPManager {
         int z = progress.settings.centerZ() + (int) Math.round(Math.sin(angle) * distance);
         int chunkX = x >> 4;
         int chunkZ = z >> 4;
+        Location anchor = new Location(world, x + 0.5D, world.getMinHeight(), z + 0.5D);
 
         progress.attemptsUsed++;
         progress.attemptInFlight = true;
 
         world.getChunkAtAsync(chunkX, chunkZ, true).whenComplete((chunk, throwable) ->
-                plugin.getFoliaScheduler().runRegion(world, chunkX, chunkZ,
+                plugin.getFoliaScheduler().runRegion(anchor,
                         () -> completeAsyncLocationAttempt(playerId, progress, x, z, throwable))
         );
     }
@@ -589,12 +590,20 @@ public class RTPManager {
             return resolveNetherSafeLocation(world, x, z);
         }
 
-        if (!isSafe(world, x, z)) {
-            return null;
+        return resolveSurfaceSafeLocation(world, x, z);
+    }
+
+    private Location resolveSurfaceSafeLocation(World world, int x, int z) {
+        int minGroundY = world.getMinHeight();
+        int maxGroundY = world.getMaxHeight() - 1 - PLAYER_CLEARANCE_BLOCKS;
+
+        for (int groundY = maxGroundY; groundY >= minGroundY; groundY--) {
+            if (isSafeStandLocation(world, x, groundY, z)) {
+                return new Location(world, x + 0.5, groundY + 1.0, z + 0.5);
+            }
         }
 
-        int y = world.getHighestBlockYAt(x, z);
-        return new Location(world, x + 0.5, y + 1.5, z + 0.5);
+        return null;
     }
 
     private Location resolveNetherSafeLocation(World world, int x, int z) {
@@ -803,19 +812,6 @@ public class RTPManager {
 
     private boolean hasActiveRtpFlow(UUID playerId) {
         return activeSearchTasks.containsKey(playerId) || activeResultTasks.containsKey(playerId);
-    }
-
-    private boolean isSafe(World world, int x, int z) {
-        int y = world.getHighestBlockYAt(x, z);
-        if (y <= world.getMinHeight()) {
-            return false;
-        }
-
-        Block top = world.getBlockAt(x, y, z);
-        String typeName = top.getType().name();
-        return !typeName.contains("WATER")
-                && !typeName.contains("LAVA")
-                && !typeName.contains("VOID");
     }
 
     private boolean isSafeStandLocation(World world, int x, int groundY, int z) {

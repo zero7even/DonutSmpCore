@@ -8,7 +8,7 @@ import com.bx.ultimateDonutSmp.listeners.*;
 import com.bx.ultimateDonutSmp.managers.*;
 import com.bx.ultimateDonutSmp.tasks.*;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
-import com.bx.ultimateDonutSmp.utils.FoliaScheduler;
+import com.bx.ultimateDonutSmp.utils.SpigotScheduler;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
@@ -18,7 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class UltimateDonutSmp extends JavaPlugin {
 
     private static UltimateDonutSmp instance;
-    private FoliaScheduler foliaScheduler;
+    private SpigotScheduler SpigotScheduler;
 
     // ── Managers ──────────────────────────────────────────────────────────────
     private ConfigManager      configManager;
@@ -81,7 +81,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-        foliaScheduler = new FoliaScheduler(this);
+        SpigotScheduler = new SpigotScheduler(this);
 
         // 1. Config & database (no dependencies)
         ColorUtils.init();
@@ -574,7 +574,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
     public static UltimateDonutSmp getInstance() { return instance; }
 
     public NamespacedKey getKey(String key) { return new NamespacedKey(this, key); }
-    public FoliaScheduler getFoliaScheduler() { return foliaScheduler; }
+    public SpigotScheduler getSpigotScheduler() { return SpigotScheduler; }
 
     // ── Getters ───────────────────────────────────────────────────────────────
 
