@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class TablistComponentUpdater {
 
@@ -20,10 +21,16 @@ public final class TablistComponentUpdater {
             "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket",
             "net.minecraft.network.protocol.game.PacketPlayOutPlayerInfo"
     };
+    private static final String[] PLAYER_INFO_REMOVE_PACKET_CLASS_NAMES = {
+            "net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket",
+            "net.minecraft.network.protocol.game.PacketPlayOutPlayerInfoRemove"
+    };
 
     private final UltimateDonutSmp plugin;
     private boolean warned;
     private boolean disabled;
+    private boolean avatarWarned;
+    private boolean avatarDisabled;
 
     public TablistComponentUpdater(UltimateDonutSmp plugin) {
         this.plugin = plugin;
@@ -48,6 +55,28 @@ public final class TablistComponentUpdater {
             return true;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             disableWithWarning(exception);
+            return false;
+        }
+    }
+
+    public boolean refreshAvatar(Player target) {
+        if (avatarDisabled || target == null || !target.isOnline()) {
+            return false;
+        }
+
+        try {
+            Object handle = invokeNoArg(target, "getHandle");
+            Object removePacket = createRemovePlayerPacket(target.getUniqueId(), handle);
+            Object addPacket = createAddPlayerPacket(handle);
+            for (Player viewer : Bukkit.getOnlinePlayers()) {
+                if (viewer != null && viewer.isOnline()) {
+                    sendPacket(viewer, removePacket);
+                    sendPacket(viewer, addPacket);
+                }
+            }
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            disableAvatarWithWarning(exception);
             return false;
         }
     }
@@ -207,13 +236,69 @@ public final class TablistComponentUpdater {
         return instantiateActionPacket(packetClass, action, handle);
     }
 
+    private Object createAddPlayerPacket(Object handle) throws ReflectiveOperationException {
+        Class<?> packetClass = getFirstAvailableClass(PLAYER_INFO_UPDATE_PACKET_CLASS_NAMES);
+        List<Object> actions = findActions(
+                packetClass,
+                "ADD_PLAYER",
+                "UPDATE_LISTED",
+                "UPDATE_GAME_MODE",
+                "UPDATE_LATENCY",
+                "UPDATE_DISPLAY_NAME"
+        );
+        if (actions.isEmpty()) {
+            throw new NoSuchFieldException("ADD_PLAYER action");
+        }
+        return instantiateActionPacket(packetClass, actions.toArray(), handle);
+    }
+
+    private Object createRemovePlayerPacket(UUID playerId, Object handle) throws ReflectiveOperationException {
+        try {
+            Class<?> packetClass = getFirstAvailableClass(PLAYER_INFO_REMOVE_PACKET_CLASS_NAMES);
+            List<UUID> playerIds = List.of(playerId);
+            for (Constructor<?> constructor : packetClass.getDeclaredConstructors()) {
+                Class<?>[] parameters = constructor.getParameterTypes();
+                constructor.setAccessible(true);
+                if (parameters.length == 1 && Collection.class.isAssignableFrom(parameters[0])) {
+                    return constructor.newInstance(playerIds);
+                }
+                if (parameters.length == 1 && Iterable.class.isAssignableFrom(parameters[0])) {
+                    return constructor.newInstance(playerIds);
+                }
+                if (parameters.length == 1 && parameters[0].isAssignableFrom(UUID.class)) {
+                    return constructor.newInstance(playerId);
+                }
+            }
+        } catch (ClassNotFoundException ignored) {
+        }
+
+        Class<?> packetClass = getFirstAvailableClass(PLAYER_INFO_UPDATE_PACKET_CLASS_NAMES);
+        Object action = findAction(packetClass, "REMOVE_PLAYER");
+        if (action == null) {
+            throw new NoSuchFieldException("REMOVE_PLAYER action");
+        }
+        return instantiateActionPacket(packetClass, action, handle);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object instantiateActionPacket(Class<?> packetClass, Object action, Object handle)
             throws ReflectiveOperationException {
+        return instantiateActionPacket(packetClass, new Object[]{action}, handle);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Object instantiateActionPacket(Class<?> packetClass, Object[] actions, Object handle)
+            throws ReflectiveOperationException {
         EnumSet actionSet = null;
+        Object action = actions.length == 0 ? null : actions[0];
         if (action instanceof Enum enumAction) {
             actionSet = EnumSet.noneOf(enumAction.getDeclaringClass());
-            actionSet.add(enumAction);
+            for (Object candidate : actions) {
+                if (candidate instanceof Enum candidateAction
+                        && candidateAction.getDeclaringClass() == enumAction.getDeclaringClass()) {
+                    actionSet.add(candidateAction);
+                }
+            }
         }
         List<Object> handles = List.of(handle);
 
@@ -262,6 +347,12 @@ public final class TablistComponentUpdater {
     }
 
     private Object findAction(Class<?> packetClass, String... names) {
+        List<Object> actions = findActions(packetClass, names);
+        return actions.isEmpty() ? null : actions.getFirst();
+    }
+
+    private List<Object> findActions(Class<?> packetClass, String... names) {
+        java.util.ArrayList<Object> actions = new java.util.ArrayList<>();
         for (Class<?> nested : packetClass.getDeclaredClasses()) {
             if (!nested.isEnum()) {
                 continue;
@@ -272,13 +363,13 @@ public final class TablistComponentUpdater {
             }
             for (String name : names) {
                 for (Object constant : constants) {
-                    if (((Enum<?>) constant).name().equalsIgnoreCase(name)) {
-                        return constant;
+                    if (((Enum<?>) constant).name().equalsIgnoreCase(name) && !actions.contains(constant)) {
+                        actions.add(constant);
                     }
                 }
             }
         }
-        return null;
+        return actions;
     }
 
     private void sendPacket(Player player, Object packet) throws ReflectiveOperationException {
@@ -391,6 +482,17 @@ public final class TablistComponentUpdater {
         warned = true;
         Throwable cause = exception.getCause() == null ? exception : exception.getCause();
         plugin.getLogger().warning("[Tablist] Unable to send Adventure tablist name components on this Spigot build: "
+                + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+    }
+
+    private void disableAvatarWithWarning(Exception exception) {
+        avatarDisabled = true;
+        if (avatarWarned) {
+            return;
+        }
+        avatarWarned = true;
+        Throwable cause = exception.getCause() == null ? exception : exception.getCause();
+        plugin.getLogger().warning("[Tablist] Unable to refresh tablist skin avatars on this Spigot build: "
                 + cause.getClass().getSimpleName() + ": " + cause.getMessage());
     }
 

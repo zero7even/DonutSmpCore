@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class TablistManager {
 
     private final UltimateDonutSmp plugin;
     private final TablistComponentUpdater componentUpdater;
+    private final boolean inlinePlayerHeadSupported;
     private final Set<UUID> refreshedSkinHeads = ConcurrentHashMap.newKeySet();
     private final Set<UUID> pendingSkinHeadTextureRefreshes = ConcurrentHashMap.newKeySet();
     private final Map<UUID, SkinTexture> skinHeadTextures = new ConcurrentHashMap<>();
@@ -54,6 +56,7 @@ public class TablistManager {
     public TablistManager(UltimateDonutSmp plugin) {
         this.plugin = plugin;
         this.componentUpdater = new TablistComponentUpdater(plugin);
+        this.inlinePlayerHeadSupported = detectInlinePlayerHeadSupport();
     }
 
     public boolean isEnabled() {
@@ -137,7 +140,9 @@ public class TablistManager {
         String teamName = showTeam ? rawTeamName : null;
         String prefix = resolvePrefix(player);
         String teamSuffix = "";
-        String iconHeadSkin = config().getString("TABLIST.ICON-HEAD-SKIN", "<head:%player_name%>");
+        String iconHeadSkin = inlinePlayerHeadSupported
+                ? config().getString("TABLIST.ICON-HEAD-SKIN", "<head:%player_name%>")
+                : "";
         String iconMedia = config().getString("TABLIST.ICON-MEDIA", "");
         String mediaBadge = resolveMediaBadge(player, iconMedia == null ? "" : iconMedia);
         String nickname = resolveNickname(player);
@@ -304,6 +309,9 @@ public class TablistManager {
 
         resolved = applyInternalPlaceholders(resolved, player);
         resolved = convertLegacyAndGradientToMiniMessage(resolved);
+        if (!inlinePlayerHeadSupported) {
+            resolved = stripUnsupportedHeadTags(resolved);
+        }
 
         try {
             Component component = MINI_MESSAGE.deserialize(resolved, headTagResolver(player));
@@ -320,20 +328,22 @@ public class TablistManager {
                 source = player.getName();
             }
 
-            PlayerHeadObjectContents.Builder builder = ObjectContents.playerHead()
-                    .name(source)
-                    .hat(true);
-            UUID id = parseUuid(source);
             boolean selfHead = isSelfHeadSource(source, player);
-            if (id != null) {
-                builder.id(id);
-            } else if (selfHead) {
-                builder.id(player.getUniqueId());
-            }
+            PlayerHeadObjectContents.Builder builder = ObjectContents.playerHead().hat(true);
+            boolean paperSkinApplied = selfHead && applyPaperSkinToPlayerHead(player, builder);
+            if (!paperSkinApplied) {
+                builder.name(source);
+                UUID id = parseUuid(source);
+                if (id != null) {
+                    builder.id(id);
+                } else if (selfHead) {
+                    builder.id(player.getUniqueId());
+                }
 
-            SkinTexture skinTexture = skinHeadTextures.get(player.getUniqueId());
-            if (skinTexture != null && skinTexture.isValid() && selfHead) {
-                builder.profileProperty(skinTexture.toProfileProperty());
+                SkinTexture skinTexture = skinHeadTextures.get(player.getUniqueId());
+                if (skinTexture != null && skinTexture.isValid() && selfHead) {
+                    builder.profileProperty(skinTexture.toProfileProperty());
+                }
             }
 
             return Tag.inserting(Component.object(builder.build()));
@@ -366,7 +376,7 @@ public class TablistManager {
     }
 
     private void refreshSkinHeadTextureIfNeeded(Player player, String text, boolean force) {
-        if (player == null || !player.isOnline() || text == null || !HEAD_TAG_PATTERN.matcher(text).find()) {
+        if (player == null || !player.isOnline() || !usesConfiguredSkinHead(text)) {
             return;
         }
 
@@ -390,7 +400,11 @@ public class TablistManager {
         SkinTexture profileTexture = resolveGameProfileTexture(player);
         if (profileTexture != null && profileTexture.isValid()) {
             skinHeadTextureRefreshTimes.put(playerId, now);
-            skinHeadTextures.put(playerId, profileTexture);
+            SkinTexture previous = skinHeadTextures.put(playerId, profileTexture);
+            boolean applied = applySkinTexture(player, profileTexture);
+            if (force || applied || !profileTexture.equals(previous)) {
+                refreshTablistAvatar(player);
+            }
             pendingSkinHeadTextureRefreshes.remove(playerId);
             return;
         }
@@ -404,11 +418,11 @@ public class TablistManager {
             }
 
             SkinTexture resolvedTexture = skinTexture;
-            plugin.getSpigotScheduler().runGlobal(() -> finishSkinHeadTextureRefresh(playerId, resolvedTexture));
+            plugin.getSpigotScheduler().runGlobal(() -> finishSkinHeadTextureRefresh(playerId, resolvedTexture, force));
         });
     }
 
-    private void finishSkinHeadTextureRefresh(UUID playerId, SkinTexture skinTexture) {
+    private void finishSkinHeadTextureRefresh(UUID playerId, SkinTexture skinTexture, boolean force) {
         try {
             skinHeadTextureRefreshTimes.put(playerId, System.currentTimeMillis());
 
@@ -419,7 +433,9 @@ public class TablistManager {
 
             if (skinTexture != null && skinTexture.isValid()) {
                 SkinTexture previous = skinHeadTextures.put(playerId, skinTexture);
-                if (!skinTexture.equals(previous)) {
+                boolean applied = applySkinTexture(online, skinTexture);
+                if (force || applied || !skinTexture.equals(previous)) {
+                    refreshTablistAvatar(online);
                     updateTablistName(online);
                 }
             }
@@ -506,6 +522,20 @@ public class TablistManager {
         return null;
     }
 
+    private boolean applyPaperSkinToPlayerHead(Player player, PlayerHeadObjectContents.Builder builder) {
+        try {
+            Method method = player.getClass().getMethod(
+                    "applySkinToPlayerHeadContents",
+                    PlayerHeadObjectContents.Builder.class
+            );
+            method.setAccessible(true);
+            method.invoke(player, builder);
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
     private SkinTexture resolveGameProfileTexture(Player player) {
         try {
             for (Object profile : resolveGameProfiles(player)) {
@@ -553,6 +583,95 @@ public class TablistManager {
 
         Object values = unwrapOptional(invokeNoArg(propertyMap, "values"));
         return extractFirstTexture(values);
+    }
+
+    private boolean applySkinTexture(Player player, SkinTexture skinTexture) {
+        if (player == null || skinTexture == null || !skinTexture.isValid()) {
+            return false;
+        }
+
+        boolean changed = false;
+        try {
+            for (Object profile : resolveGameProfiles(player)) {
+                changed |= applySkinTexture(profile, skinTexture);
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return changed;
+        }
+        return changed;
+    }
+
+    private boolean applySkinTexture(Object profile, SkinTexture skinTexture) throws ReflectiveOperationException {
+        Object propertyMap = invokeNoArg(profile, "getProperties", "properties");
+        if (propertyMap == null) {
+            return false;
+        }
+
+        SkinTexture current = resolveProfileTexture(profile);
+        if (skinTexture.equals(current)) {
+            return false;
+        }
+
+        Object property = createProfileProperty(propertyMap.getClass().getClassLoader(), skinTexture);
+        boolean removed = invokeCompatibleIfPresent(propertyMap, "removeAll", "textures");
+        boolean added = invokeCompatibleIfPresent(propertyMap, "put", "textures", property);
+        return added || removed;
+    }
+
+    private Object createProfileProperty(ClassLoader preferredLoader, SkinTexture skinTexture)
+            throws ReflectiveOperationException {
+        List<ClassLoader> loaders = new ArrayList<>();
+        if (preferredLoader != null) {
+            loaders.add(preferredLoader);
+        }
+        loaders.add(Bukkit.class.getClassLoader());
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        if (contextLoader != null && !loaders.contains(contextLoader)) {
+            loaders.add(contextLoader);
+        }
+
+        ClassNotFoundException missing = null;
+        for (ClassLoader loader : loaders) {
+            try {
+                Class<?> propertyClass = Class.forName("com.mojang.authlib.properties.Property", false, loader);
+                for (Constructor<?> constructor : propertyClass.getDeclaredConstructors()) {
+                    Class<?>[] parameters = constructor.getParameterTypes();
+                    if (parameters.length == 3
+                            && parameters[0] == String.class
+                            && parameters[1] == String.class
+                            && parameters[2] == String.class) {
+                        constructor.setAccessible(true);
+                        return constructor.newInstance("textures", skinTexture.value(), skinTexture.signature());
+                    }
+                    if (parameters.length == 2
+                            && parameters[0] == String.class
+                            && parameters[1] == String.class) {
+                        constructor.setAccessible(true);
+                        return constructor.newInstance("textures", skinTexture.value());
+                    }
+                }
+            } catch (ClassNotFoundException exception) {
+                missing = exception;
+            }
+        }
+
+        throw missing == null
+                ? new ClassNotFoundException("com.mojang.authlib.properties.Property")
+                : missing;
+    }
+
+    private void refreshTablistAvatar(Player player) {
+        if (player == null || !player.isOnline() || !componentUpdater.refreshAvatar(player)) {
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        plugin.getSpigotScheduler().runEntityLater(player, () -> {
+            Player online = Bukkit.getPlayer(playerId);
+            if (online != null && online.isOnline()) {
+                updateTablistName(online);
+            }
+        }, 1L);
     }
 
     private SkinTexture extractFirstTexture(Object textures) throws ReflectiveOperationException {
@@ -631,6 +750,28 @@ public class TablistManager {
     }
 
     private Object invokeCompatible(Object target, String methodName, Object... args) throws ReflectiveOperationException {
+        Method method = findCompatibleMethod(target, methodName, args);
+        if (method == null) {
+            return null;
+        }
+
+        method.setAccessible(true);
+        return method.invoke(target, args);
+    }
+
+    private boolean invokeCompatibleIfPresent(Object target, String methodName, Object... args)
+            throws ReflectiveOperationException {
+        Method method = findCompatibleMethod(target, methodName, args);
+        if (method == null) {
+            return false;
+        }
+
+        method.setAccessible(true);
+        method.invoke(target, args);
+        return true;
+    }
+
+    private Method findCompatibleMethod(Object target, String methodName, Object... args) {
         if (target == null) {
             return null;
         }
@@ -641,8 +782,7 @@ public class TablistManager {
             }
 
             if (canAccept(method.getParameterTypes(), args)) {
-                method.setAccessible(true);
-                return method.invoke(target, args);
+                return method;
             }
         }
 
@@ -653,8 +793,7 @@ public class TablistManager {
                 }
 
                 if (canAccept(method.getParameterTypes(), args)) {
-                    method.setAccessible(true);
-                    return method.invoke(target, args);
+                    return method;
                 }
             }
         }
@@ -748,6 +887,20 @@ public class TablistManager {
         return value;
     }
 
+    private boolean usesConfiguredSkinHead(String text) {
+        if (text != null && HEAD_TAG_PATTERN.matcher(text).find()) {
+            return true;
+        }
+
+        String iconHeadSkin = config().getString("TABLIST.ICON-HEAD-SKIN", "<head:%player_name%>");
+        if (iconHeadSkin != null && HEAD_TAG_PATTERN.matcher(iconHeadSkin).find()) {
+            return true;
+        }
+
+        String nameFormat = config().getString("TABLIST.NAME-FORMAT", "");
+        return nameFormat != null && HEAD_TAG_PATTERN.matcher(nameFormat).find();
+    }
+
     private String stripUnsupportedHeadTags(String text) {
         if (text == null || text.isBlank()) {
             return "";
@@ -834,6 +987,54 @@ public class TablistManager {
 
     private FileConfiguration config() {
         return plugin.getConfigManager().getConfig();
+    }
+
+    private boolean detectInlinePlayerHeadSupport() {
+        String version = resolveMinecraftVersion();
+        int[] parsed = parseVersion(version);
+        if (parsed[0] > 1) {
+            return true;
+        }
+        if (parsed[0] == 1 && parsed[1] > 21) {
+            return true;
+        }
+        return parsed[0] == 1 && parsed[1] == 21 && parsed[2] >= 9;
+    }
+
+    private String resolveMinecraftVersion() {
+        try {
+            Method method = Bukkit.class.getMethod("getMinecraftVersion");
+            Object value = method.invoke(null);
+            if (value instanceof String version && !version.isBlank()) {
+                return version;
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+        return Bukkit.getBukkitVersion();
+    }
+
+    private int[] parseVersion(String version) {
+        int[] parsed = new int[]{0, 0, 0};
+        if (version == null || version.isBlank()) {
+            return parsed;
+        }
+
+        String[] parts = version.split("[^0-9]+");
+        int index = 0;
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            if (index >= parsed.length) {
+                break;
+            }
+            try {
+                parsed[index++] = Integer.parseInt(part);
+            } catch (NumberFormatException ignored) {
+                return parsed;
+            }
+        }
+        return parsed;
     }
 
     private record SkinTexture(String value, String signature) {
