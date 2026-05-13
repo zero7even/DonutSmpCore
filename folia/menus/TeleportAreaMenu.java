@@ -45,8 +45,8 @@ public abstract class TeleportAreaMenu extends BaseMenu {
         if (areas.isEmpty()) {
             set(inventory.getSize() / 2, ItemUtils.createItem(
                     Material.BARRIER,
-                    getEmptyTitle(),
-                    List.of(getEmptyLore())
+                    "&cLocation not set",
+                    List.of("&7Set this " + getLocationLabel() + " location first.")
             ));
             return;
         }
@@ -113,6 +113,10 @@ public abstract class TeleportAreaMenu extends BaseMenu {
 
         player.closeInventory();
         plugin.getTeleportManager().queue(player, destination, getTeleportType(), null);
+    }
+
+    private String getLocationLabel() {
+        return getAreaType() == SpawnManager.AreaType.AFK ? "AFK" : "spawn";
     }
 
     private int getRandomSlot() {

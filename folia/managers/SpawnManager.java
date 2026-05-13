@@ -162,7 +162,7 @@ public class SpawnManager {
     }
 
     public boolean shouldOpenMenu(AreaType type) {
-        return hasMenuDefinition(type);
+        return isMenuEnabled(type) && hasMenuDefinition(type);
     }
 
     public boolean hasMenuDefinition(AreaType type) {
