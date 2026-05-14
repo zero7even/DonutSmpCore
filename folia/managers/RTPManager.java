@@ -96,6 +96,11 @@ public class RTPManager {
         menuDestinations = buildMenuDestinations(configuredDestinations);
     }
 
+    public boolean isEnabled() {
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.RTP)
+                && plugin.getConfigManager().getRtp().getBoolean("ENABLED", true);
+    }
+
     public void clearSearch(UUID playerId) {
         stopSearch(playerId, true);
     }
@@ -205,6 +210,9 @@ public class RTPManager {
     }
 
     public boolean queueMenuTeleport(Player player, RTPDestination destination) {
+        if (!isEnabled()) {
+            return false;
+        }
         if (destination == null) {
             return false;
         }
@@ -212,6 +220,9 @@ public class RTPManager {
     }
 
     public boolean queueCommandTeleport(Player player, String selector) {
+        if (!isEnabled()) {
+            return false;
+        }
         String worldName = resolveWorldSelector(selector);
         if (worldName == null || worldName.isBlank()) {
             player.sendMessage(ColorUtils.toComponent(
@@ -223,6 +234,9 @@ public class RTPManager {
     }
 
     public boolean isPortalDestinationAvailable(String selector) {
+        if (!isEnabled()) {
+            return false;
+        }
         String worldName = resolveWorldSelector(selector);
         if (worldName == null || worldName.isBlank()) {
             return false;
@@ -237,6 +251,9 @@ public class RTPManager {
     }
 
     public List<String> getPortalSelectorSuggestions() {
+        if (!isEnabled()) {
+            return List.of();
+        }
         Set<String> selectors = new LinkedHashSet<>();
 
         for (RTPDestination destination : configuredDestinations) {
@@ -279,6 +296,9 @@ public class RTPManager {
     }
 
     public Location findSafeLocation(SearchSettings settings) {
+        if (!isEnabled()) {
+            return null;
+        }
         if (settings == null || settings.worldName() == null || settings.worldName().isBlank()) {
             return null;
         }

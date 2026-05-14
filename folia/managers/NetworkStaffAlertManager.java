@@ -366,11 +366,15 @@ public class NetworkStaffAlertManager {
     }
 
     private boolean isHelpopEnabled() {
-        return isNetworkEnabled() && getNetworkConfig().getBoolean("NETWORK.HELPOP_ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.STAFF_ALERTS)
+                && isNetworkEnabled()
+                && getNetworkConfig().getBoolean("NETWORK.HELPOP_ENABLED", true);
     }
 
     private boolean isReportEnabled() {
-        return isNetworkEnabled() && getNetworkConfig().getBoolean("NETWORK.REPORT_ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.STAFF_ALERTS)
+                && isNetworkEnabled()
+                && getNetworkConfig().getBoolean("NETWORK.REPORT_ENABLED", true);
     }
 
     private boolean shouldWarnSenderOnRedisError() {

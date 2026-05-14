@@ -1,6 +1,7 @@
 package com.bx.ultimateDonutSmp.tasks;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
+import com.bx.ultimateDonutSmp.managers.FeatureManager;
 import com.bx.ultimateDonutSmp.managers.OptimizationManager;
 import com.bx.ultimateDonutSmp.models.PlayerData;
 import com.bx.ultimateDonutSmp.models.Team;
@@ -24,6 +25,9 @@ public class LunarTeammatesTask implements Runnable {
 
     @Override
     public void run() {
+        if (!plugin.getFeatureManager().isEnabled(FeatureManager.Feature.LUNAR_TEAM_VIEW)) {
+            return;
+        }
         if (plugin.getOptimizationManager() != null
                 && !plugin.getOptimizationManager().shouldRun(OptimizationManager.OptimizedTask.LUNAR_TEAMMATES)) {
             return;

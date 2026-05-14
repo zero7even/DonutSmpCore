@@ -60,7 +60,8 @@ public class TablistManager {
     }
 
     public boolean isEnabled() {
-        return config().getBoolean("TABLIST.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.TABLIST)
+                && config().getBoolean("TABLIST.ENABLED", true);
     }
 
     public void update(Player player) {

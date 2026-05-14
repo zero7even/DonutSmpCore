@@ -90,7 +90,8 @@ public class NetworkStatusManager {
     }
 
     public boolean isEnabled() {
-        return getConfig().getBoolean(ROOT_PATH + ".ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.NETWORK_SERVERS)
+                && getConfig().getBoolean(ROOT_PATH + ".ENABLED", true);
     }
 
     public boolean hasConfiguredServers() {

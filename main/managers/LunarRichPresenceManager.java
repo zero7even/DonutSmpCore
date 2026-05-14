@@ -332,7 +332,8 @@ public class LunarRichPresenceManager {
     }
 
     private boolean isConfiguredEnabled() {
-        return getConfig().getBoolean(PATH + ".ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.LUNAR_RICH_PRESENCE)
+                && getConfig().getBoolean(PATH + ".ENABLED", true);
     }
 
     private FileConfiguration getConfig() {

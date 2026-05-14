@@ -422,7 +422,8 @@ public class PortalManager {
     }
 
     public boolean isSystemEnabled() {
-        return plugin.getConfigManager().getConfig().getBoolean("PORTAL-SYSTEM.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.PORTALS)
+                && plugin.getConfigManager().getConfig().getBoolean("PORTAL-SYSTEM.ENABLED", true);
     }
 
     public void clearPlayerState(UUID playerId) {

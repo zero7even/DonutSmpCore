@@ -173,7 +173,7 @@ public class OptimizationManager {
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.OPTIMIZATION) && enabled;
     }
 
     public LoadState getLoadState() {

@@ -65,7 +65,8 @@ public class FreezeManager {
     }
 
     public boolean isEnabled() {
-        return getConfig().getBoolean("FREEZE.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.FREEZE)
+                && getConfig().getBoolean("FREEZE.ENABLED", true);
     }
 
     public boolean shouldPersistOnQuit() {

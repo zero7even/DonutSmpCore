@@ -114,7 +114,8 @@ public class OptimizationManager {
 
     public synchronized void reload() {
         FileConfiguration config = plugin.getConfigManager().getConfig();
-        enabled = config.getBoolean(CONFIG_PATH + ".ENABLED", true);
+        enabled = plugin.getFeatureManager().isEnabled(FeatureManager.Feature.OPTIMIZATION)
+                && config.getBoolean(CONFIG_PATH + ".ENABLED", true);
         logStateChanges = config.getBoolean(CONFIG_PATH + ".LOG-STATE-CHANGES", true);
         monitorIntervalTicks = Math.max(20L, config.getLong(CONFIG_PATH + ".MONITOR-INTERVAL-TICKS", 100L));
         warnTps = config.getDouble(CONFIG_PATH + ".TPS-WARN-THRESHOLD", 18.5D);
@@ -173,7 +174,7 @@ public class OptimizationManager {
     }
 
     public synchronized boolean isEnabled() {
-        return enabled;
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.OPTIMIZATION) && enabled;
     }
 
     public synchronized LoadState getLoadState() {

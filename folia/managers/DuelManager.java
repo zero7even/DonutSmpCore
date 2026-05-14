@@ -113,7 +113,8 @@ public class DuelManager {
     }
 
     public boolean isEnabled() {
-        return config().getBoolean("SETTINGS.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.DUELS)
+                && config().getBoolean("SETTINGS.ENABLED", true);
     }
 
     public String getQueueTitle() {

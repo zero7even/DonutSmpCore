@@ -1,9 +1,11 @@
 package com.bx.ultimateDonutSmp.commands;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
+import com.bx.ultimateDonutSmp.managers.FeatureManager;
 import com.bx.ultimateDonutSmp.managers.OptimizationManager;
 import com.bx.ultimateDonutSmp.managers.SpawnManager;
 import com.bx.ultimateDonutSmp.managers.StatsWipeManager;
+import com.bx.ultimateDonutSmp.menus.FeatureToggleMenu;
 import com.bx.ultimateDonutSmp.menus.StatsWipeMenu;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import org.bukkit.Bukkit;
@@ -33,10 +35,11 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
     private static final String STATS_WIPE_PERMISSION = "ultimatedonutsmp.admin.statswipe";
     private static final String OPTIMIZE_PERMISSION = "ultimatedonutsmp.admin.optimize";
     private static final String SETUP_PERMISSION = "ultimatedonutsmp.admin.setup";
+    private static final String FEATURES_PERMISSION = "ultimatedonutsmp.admin.features";
     private static final String DEFAULT_WEBHOOK_PLACEHOLDER = "https://discord.com/api/webhooks/your_webhook_here";
     private static final int COMMANDS_PER_PAGE = 8;
 
-    private static final List<String> ROOT_COMPLETIONS = List.of("reload", "statswipe", "optimize", "setup");
+    private static final List<String> ROOT_COMPLETIONS = List.of("reload", "statswipe", "optimize", "setup", "features");
     private static final List<String> SETUP_COMPLETIONS = List.of("status", "apply", "setspawn", "setafk", "commands");
     private static final List<String> COMMAND_CATEGORIES = List.of("all", "starter", "economy", "market", "pvp", "staff", "admin", "setup");
 
@@ -58,6 +61,7 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
             case "statswipe" -> handleStatsWipe(sender, label, args);
             case "optimize", "optimization" -> handleOptimize(sender, label, args);
             case "setup" -> handleSetup(sender, label, args);
+            case "features" -> handleFeatures(sender, label, args);
             default -> sendUsage(sender, label);
         }
         return true;
@@ -181,6 +185,84 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleFeatures(CommandSender sender, String label, String[] args) {
+        if (!sender.hasPermission(FEATURES_PERMISSION)) {
+            sender.sendMessage(ColorUtils.toComponent(
+                    plugin.getConfigManager().getMessageOrDefault(
+                            "FEATURES.NO-PERMISSION",
+                            "&cYou do not have permission to manage feature toggles."
+                    )
+            ));
+            return;
+        }
+
+        if (args.length == 1 || (args.length >= 2 && isGuiAlias(args[1]))) {
+            if (sender instanceof Player player) {
+                new FeatureToggleMenu(plugin).open(player);
+                return;
+            }
+            sendFeatureList(sender);
+            return;
+        }
+
+        String action = args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("list")) {
+            sendFeatureList(sender);
+            return;
+        }
+
+        if (!action.equals("toggle") && !action.equals("enable") && !action.equals("disable")) {
+            sendFeatureUsage(sender, label);
+            return;
+        }
+
+        if (args.length < 3) {
+            sendFeatureUsage(sender, label);
+            return;
+        }
+
+        FeatureManager.Feature feature = FeatureManager.Feature.fromInput(args[2]).orElse(null);
+        if (feature == null) {
+            sender.sendMessage(ColorUtils.toComponent(
+                    plugin.getConfigManager().getMessageOrDefault(
+                            "FEATURES.UNKNOWN",
+                            "&cUnknown feature: &f{feature}",
+                            "{feature}", args[2]
+                    )
+            ));
+            return;
+        }
+
+        boolean success;
+        if (action.equals("toggle")) {
+            success = plugin.getFeatureManager().toggle(feature);
+        } else {
+            success = plugin.getFeatureManager().setEnabled(feature, action.equals("enable"));
+        }
+
+        if (!success) {
+            sender.sendMessage(ColorUtils.toComponent(
+                    plugin.getConfigManager().getMessageOrDefault(
+                            "FEATURES.TOGGLE-FAILED",
+                            "&cFailed to update {feature}.",
+                            "{feature}", feature.displayName(),
+                            "{feature_key}", feature.configKey()
+                    )
+            ));
+            return;
+        }
+
+        sender.sendMessage(ColorUtils.toComponent(
+                plugin.getConfigManager().getMessageOrDefault(
+                        "FEATURES.TOGGLED",
+                        "&a{feature} is now {state}.",
+                        "{feature}", feature.displayName(),
+                        "{feature_key}", feature.configKey(),
+                        "{state}", plugin.getFeatureManager().statusText(feature)
+                )
+        ));
+    }
+
     private void handleSetupApply(CommandSender sender, String label, String[] args) {
         if (args.length < 4 || !args[2].equalsIgnoreCase("single-paper") || !args[3].equalsIgnoreCase("confirm")) {
             sender.sendMessage(ColorUtils.toComponent("&cUsage: /" + label + " setup apply single-paper confirm"));
@@ -282,8 +364,7 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
         sendCheck(sender, plugin.getSpawnManager().hasAfk(), "AFK",
                 plugin.getSpawnManager().hasAfk() ? "ready" : "use /" + label + " setup setafk");
         List<String> rtpWorlds = availableRtpWorlds();
-        sendCheck(sender, config.getBoolean("COMMANDS.RTP", true)
-                        && plugin.getConfigManager().getRtp().getBoolean("ENABLED", true)
+        sendCheck(sender, plugin.getRtpManager().isEnabled()
                         && !rtpWorlds.isEmpty(),
                 "RTP worlds",
                 rtpWorlds.isEmpty() ? "no configured RTP worlds are loaded" : String.join(", ", rtpWorlds));
@@ -345,9 +426,21 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
             if (!aliases.isBlank()) {
                 description += " (aliases: " + aliases + ")";
             }
+            if (!plugin.getFeatureManager().isCommandFeatureEnabled(commandName)) {
+                continue;
+            }
             entries.add(new CommandEntry(usage, description));
         }
         return entries;
+    }
+
+    private void sendFeatureList(CommandSender sender) {
+        sender.sendMessage(ColorUtils.toComponent("&8&m---------- &bFeature Toggles &8&m----------"));
+        for (FeatureManager.Feature feature : plugin.getFeatureManager().getFeatures()) {
+            sender.sendMessage(ColorUtils.toComponent("&f" + feature.configKey()
+                    + " &8- " + plugin.getFeatureManager().statusText(feature)
+                    + " &8- &7" + feature.displayName()));
+        }
     }
 
     private List<String> commandNamesForCategory(String category, Collection<String> allCommandNames) {
@@ -547,11 +640,15 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendUsage(CommandSender sender, String label) {
-        sender.sendMessage(ColorUtils.toComponent("&cUsage: /" + label + " <reload|statswipe|optimize|setup>"));
+        sender.sendMessage(ColorUtils.toComponent("&cUsage: /" + label + " <reload|statswipe|optimize|setup|features>"));
     }
 
     private void sendSetupUsage(CommandSender sender, String label) {
         sender.sendMessage(ColorUtils.toComponent("&cUsage: /" + label + " setup <status|apply|setspawn|setafk|commands>"));
+    }
+
+    private void sendFeatureUsage(CommandSender sender, String label) {
+        sender.sendMessage(ColorUtils.toComponent("&cUsage: /" + label + " features [list|toggle|enable|disable] [feature]"));
     }
 
     private String message(String key, String fallback) {
@@ -578,6 +675,10 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
         String root = args[0].toLowerCase(Locale.ROOT);
         if (root.equals("optimize") || root.equals("optimization")) {
             return args.length == 2 ? partialMatches(args[1], List.of("status", "reload", "reset")) : List.of();
+        }
+
+        if (root.equals("features")) {
+            return completeFeatures(args);
         }
 
         if (root.equals("statswipe")) {
@@ -615,6 +716,21 @@ public class UltimateDonutSmpCommand implements CommandExecutor, TabCompleter {
             if (args.length == 4) {
                 return partialMatches(args[3], List.of("1", "2", "3", "4", "5"));
             }
+        }
+
+        return List.of();
+    }
+
+    private List<String> completeFeatures(String[] args) {
+        if (args.length == 2) {
+            return partialMatches(args[1], List.of("list", "toggle", "enable", "disable"));
+        }
+
+        if (args.length == 3 && List.of("toggle", "enable", "disable").contains(args[1].toLowerCase(Locale.ROOT))) {
+            List<String> featureKeys = plugin.getFeatureManager().getFeatures().stream()
+                    .map(feature -> feature.configKey().toLowerCase(Locale.ROOT).replace('_', '-'))
+                    .toList();
+            return partialMatches(args[2], featureKeys);
         }
 
         return List.of();

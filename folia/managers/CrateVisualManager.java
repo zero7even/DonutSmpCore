@@ -47,6 +47,9 @@ public class CrateVisualManager {
 
     public void reload() {
         shutdown();
+        if (!isCratesEnabled()) {
+            return;
+        }
         purgeNearbyDisplaysForAllBoundCrates();
         purgeAllCrateHologramsInWorlds();
         spawnAllHolograms();
@@ -67,7 +70,7 @@ public class CrateVisualManager {
     }
 
     public void handleJoin(Player player) {
-        if (player == null) {
+        if (player == null || !isCratesEnabled()) {
             return;
         }
 
@@ -108,7 +111,7 @@ public class CrateVisualManager {
     }
 
     public void refreshHologram(Block block) {
-        if (block == null || block.getWorld() == null) {
+        if (block == null || block.getWorld() == null || !isCratesEnabled()) {
             return;
         }
 
@@ -125,7 +128,7 @@ public class CrateVisualManager {
     }
 
     public void playOpenEffects(Player player, Block block, CrateManager.CrateDefinition crate) {
-        if (player == null || block == null || crate == null || block.getWorld() == null) {
+        if (player == null || block == null || crate == null || block.getWorld() == null || !isCratesEnabled()) {
             return;
         }
 
@@ -141,7 +144,7 @@ public class CrateVisualManager {
     }
 
     public void playNoKeyEffects(Player player) {
-        if (player == null) {
+        if (player == null || !isCratesEnabled()) {
             return;
         }
         SoundUtils.play(player, plugin.getConfigManager().getSounds().getString(
@@ -151,7 +154,7 @@ public class CrateVisualManager {
     }
 
     public void playClaimEffects(Player player, CrateManager.CrateDefinition crate) {
-        if (player == null || crate == null || player.getWorld() == null) {
+        if (player == null || crate == null || player.getWorld() == null || !isCratesEnabled()) {
             return;
         }
 
@@ -167,11 +170,19 @@ public class CrateVisualManager {
 
     private void startVisualTask() {
         visualTask = plugin.getFoliaScheduler().runGlobalTimer(() -> {
+            if (!isCratesEnabled()) {
+                shutdown();
+                return;
+            }
             visualPulse++;
             spawnIdleParticles();
             ensureGlobalHolograms();
             updatePersonalKeyDisplays();
         }, 10L, 10L);
+    }
+
+    private boolean isCratesEnabled() {
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.CRATES);
     }
 
     private void spawnAllHolograms() {

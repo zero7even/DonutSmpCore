@@ -160,7 +160,8 @@ public class OrdersManager {
     }
 
     public boolean isEnabled() {
-        return config().getBoolean("SETTINGS.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.ORDERS)
+                && config().getBoolean("SETTINGS.ENABLED", true);
     }
 
     public String getBrowseTitle() {

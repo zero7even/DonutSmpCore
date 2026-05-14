@@ -103,7 +103,8 @@ public class BillfordManager {
     }
 
     public boolean isTimeToAdvance() {
-        return nextAdvanceMillis != Long.MAX_VALUE
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.BILLFORD)
+                && nextAdvanceMillis != Long.MAX_VALUE
                 && System.currentTimeMillis() >= nextAdvanceMillis;
     }
 

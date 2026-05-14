@@ -10,6 +10,9 @@ import com.bx.ultimateDonutSmp.tasks.*;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import com.bx.ultimateDonutSmp.utils.FoliaScheduler;
 import org.bukkit.NamespacedKey;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.ServicePriority;
@@ -22,6 +25,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
     // ── Managers ──────────────────────────────────────────────────────────────
     private ConfigManager      configManager;
+    private FeatureManager     featureManager;
     private DatabaseManager    databaseManager;
     private PlayerDataManager  playerDataManager;
     private EconomyManager     economyManager;
@@ -88,6 +92,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
         configManager   = new ConfigManager(this);
         configManager.loadAll();
+        featureManager = new FeatureManager(this);
         optimizationManager = new OptimizationManager(this);
         optimizationManager.start();
 
@@ -307,175 +312,200 @@ public final class UltimateDonutSmp extends JavaPlugin {
     private void registerCommands() {
         // Team
         TeamCommand teamCmd = new TeamCommand(this);
-        getCommand("team").setExecutor(teamCmd);
+        setExecutor("team", teamCmd, FeatureManager.Feature.TEAMS);
         ChatCommand chatCommand = new ChatCommand(this);
         ChatTabCompleter chatTabCompleter = new ChatTabCompleter();
-        getCommand("chat").setExecutor(chatCommand);
+        setExecutor("chat", chatCommand, FeatureManager.Feature.CHAT);
         getCommand("chat").setTabCompleter(chatTabCompleter);
         IgnoreCommand ignoreCommand = new IgnoreCommand(this);
         IgnoreTabCompleter ignoreTabCompleter = new IgnoreTabCompleter(this);
-        getCommand("ignore").setExecutor(ignoreCommand);
+        setExecutor("ignore", ignoreCommand, FeatureManager.Feature.IGNORE);
         getCommand("ignore").setTabCompleter(ignoreTabCompleter);
-        getCommand("unignore").setExecutor(ignoreCommand);
+        setExecutor("unignore", ignoreCommand, FeatureManager.Feature.IGNORE);
         getCommand("unignore").setTabCompleter(ignoreTabCompleter);
         MessageCommand messageCommand = new MessageCommand(this);
         MessageTabCompleter messageTabCompleter = new MessageTabCompleter();
-        getCommand("msg").setExecutor(messageCommand);
+        setExecutor("msg", messageCommand, FeatureManager.Feature.MESSAGING);
         getCommand("msg").setTabCompleter(messageTabCompleter);
-        getCommand("reply").setExecutor(messageCommand);
+        setExecutor("reply", messageCommand, FeatureManager.Feature.MESSAGING);
         getCommand("reply").setTabCompleter(messageTabCompleter);
-        getCommand("pm").setExecutor(new PrivateMessageToggleCommand(this));
+        setExecutor("pm", new PrivateMessageToggleCommand(this), FeatureManager.Feature.MESSAGING);
 
         // Homes
         HomeCommand homeCmd = new HomeCommand(this);
-        getCommand("home").setExecutor(homeCmd);
-        getCommand("homes").setExecutor(homeCmd);
-        getCommand("sethome").setExecutor(homeCmd);
-        getCommand("delhome").setExecutor(homeCmd);
-        getCommand("renamehome").setExecutor(homeCmd);
+        setExecutor("home", homeCmd, FeatureManager.Feature.HOMES);
+        setExecutor("homes", homeCmd, FeatureManager.Feature.HOMES);
+        setExecutor("sethome", homeCmd, FeatureManager.Feature.HOMES);
+        setExecutor("delhome", homeCmd, FeatureManager.Feature.HOMES);
+        setExecutor("renamehome", homeCmd, FeatureManager.Feature.HOMES);
 
         // Spawn / AFK
-        getCommand("spawn").setExecutor(new SpawnCommand(this));
-        getCommand("afk").setExecutor(new AFKCommand(this));
+        setExecutor("spawn", new SpawnCommand(this), FeatureManager.Feature.SPAWN);
+        setExecutor("afk", new AFKCommand(this), FeatureManager.Feature.AFK);
 
         // Teleport
         TPACommand tpaCmd = new TPACommand(this);
-        getCommand("tpa").setExecutor(tpaCmd);
-        getCommand("tpahere").setExecutor(tpaCmd);
-        getCommand("tpaccept").setExecutor(tpaCmd);
-        getCommand("tpadeny").setExecutor(tpaCmd);
-        getCommand("tpacancel").setExecutor(tpaCmd);
-        getCommand("tpauto").setExecutor(new TPAutoCommand(this));
-        getCommand("tpahereauto").setExecutor(new TPAHereAutoCommand(this));
+        setExecutor("tpa", tpaCmd, FeatureManager.Feature.TPA);
+        setExecutor("tpahere", tpaCmd, FeatureManager.Feature.TPA);
+        setExecutor("tpaccept", tpaCmd, FeatureManager.Feature.TPA);
+        setExecutor("tpadeny", tpaCmd, FeatureManager.Feature.TPA);
+        setExecutor("tpacancel", tpaCmd, FeatureManager.Feature.TPA);
+        setExecutor("tpauto", new TPAutoCommand(this), FeatureManager.Feature.TPA, FeatureManager.Feature.TPA_AUTO);
+        setExecutor("tpahereauto", new TPAHereAutoCommand(this), FeatureManager.Feature.TPA, FeatureManager.Feature.TPA_AUTO);
 
         // Economy
         BalanceCommand balCmd = new BalanceCommand(this);
-        getCommand("balance").setExecutor(balCmd);
-        getCommand("pay").setExecutor(new PayCommand(this));
-        getCommand("addmoney").setExecutor(new AddMoneyCommand(this));
-        getCommand("removemoney").setExecutor(new RemoveMoneyCommand(this));
-        getCommand("setmoney").setExecutor(new SetMoneyCommand(this));
+        setExecutor("balance", balCmd);
+        setExecutor("pay", new PayCommand(this));
+        setExecutor("addmoney", new AddMoneyCommand(this));
+        setExecutor("removemoney", new RemoveMoneyCommand(this));
+        setExecutor("setmoney", new SetMoneyCommand(this));
 
         ShardsCommand shardsCmd = new ShardsCommand(this);
-        getCommand("shards").setExecutor(shardsCmd);
-        getCommand("shardpay").setExecutor(new ShardPayCommand(this));
+        setExecutor("shards", shardsCmd, FeatureManager.Feature.SHARDS);
+        setExecutor("shardpay", new ShardPayCommand(this), FeatureManager.Feature.SHARDS);
         CrateCommand crateCmd = new CrateCommand(this);
-        getCommand("crate").setExecutor(crateCmd);
-        getCommand("crates").setExecutor(crateCmd);
-        getCommand("keys").setExecutor(crateCmd);
+        setExecutor("crate", crateCmd, FeatureManager.Feature.CRATES);
+        setExecutor("crates", crateCmd, FeatureManager.Feature.CRATES);
+        setExecutor("keys", crateCmd, FeatureManager.Feature.CRATES);
 
         // Shop / Sell / Worth
-        getCommand("shop").setExecutor(new ShopCommand(this));
-        getCommand("orders").setExecutor(new OrdersCommand(this));
-        getCommand("duel").setExecutor(new DuelCommand(this));
-        getCommand("queue").setExecutor(new QueueCommand(this));
-        getCommand("leave").setExecutor(new LeaveCommand(this));
-        getCommand("draw").setExecutor(new DrawCommand(this));
-        getCommand("arena").setExecutor(new ArenaCommand(this));
-        getCommand("ffa").setExecutor(new FfaCommand(this));
-        getCommand("ffastats").setExecutor(new FfaStatsCommand(this));
-        getCommand("ffaarena").setExecutor(new FfaArenaCommand(this));
-        getCommand("auctionhouse").setExecutor(new AuctionHouseCommand(this));
-        getCommand("enderchest").setExecutor(new EnderChestCommand(this));
+        setExecutor("shop", new ShopCommand(this), FeatureManager.Feature.SHOP);
+        setExecutor("orders", new OrdersCommand(this), FeatureManager.Feature.ORDERS);
+        setExecutor("duel", new DuelCommand(this), FeatureManager.Feature.DUELS);
+        setExecutor("queue", new QueueCommand(this), FeatureManager.Feature.DUELS);
+        setExecutor("leave", new LeaveCommand(this));
+        setExecutor("draw", new DrawCommand(this), FeatureManager.Feature.DUELS);
+        setExecutor("arena", new ArenaCommand(this), FeatureManager.Feature.DUELS);
+        setExecutor("ffa", new FfaCommand(this), FeatureManager.Feature.FFA);
+        setExecutor("ffastats", new FfaStatsCommand(this), FeatureManager.Feature.FFA);
+        setExecutor("ffaarena", new FfaArenaCommand(this), FeatureManager.Feature.FFA);
+        setExecutor("auctionhouse", new AuctionHouseCommand(this), FeatureManager.Feature.AUCTION_HOUSE);
+        setExecutor("enderchest", new EnderChestCommand(this), FeatureManager.Feature.ENDER_CHEST);
         SellCommand sellCmd = new SellCommand(this);
-        getCommand("sell").setExecutor(sellCmd);
-        getCommand("sellhand").setExecutor(sellCmd);
-        getCommand("sellall").setExecutor(sellCmd);
-        getCommand("sellhistory").setExecutor(sellCmd);
-        getCommand("worth").setExecutor(new WorthCommand(this));
+        setExecutor("sell", sellCmd, FeatureManager.Feature.SELL);
+        setExecutor("sellhand", sellCmd, FeatureManager.Feature.SELL);
+        setExecutor("sellall", sellCmd, FeatureManager.Feature.SELL);
+        setExecutor("sellhistory", sellCmd, FeatureManager.Feature.SELL);
+        setExecutor("worth", new WorthCommand(this), FeatureManager.Feature.SELL, FeatureManager.Feature.WORTH);
 
         // RTP
-        getCommand("rtp").setExecutor(new RTPCommand(this));
+        setExecutor("rtp", new RTPCommand(this), FeatureManager.Feature.RTP);
 
         // Stats / Leaderboard
-        getCommand("stats").setExecutor(new StatsCommand(this));
-        getCommand("ping").setExecutor(new PingCommand(this));
-        getCommand("playtime").setExecutor(new PlaytimeCommand(this));
+        setExecutor("stats", new StatsCommand(this), FeatureManager.Feature.STATS);
+        setExecutor("ping", new PingCommand(this), FeatureManager.Feature.STATS);
+        setExecutor("playtime", new PlaytimeCommand(this), FeatureManager.Feature.STATS);
         LeaderboardCommand lbCmd = new LeaderboardCommand(this);
-        getCommand("leaderboard").setExecutor(lbCmd);
-        getCommand("freeze").setExecutor(new FreezeCommand(this));
-        getCommand("fly").setExecutor(new FlyCommand(this));
-        getCommand("heal").setExecutor(new HealCommand(this));
-        getCommand("feed").setExecutor(new FeedCommand(this));
+        setExecutor("leaderboard", lbCmd, FeatureManager.Feature.LEADERBOARDS);
+        setExecutor("freeze", new FreezeCommand(this));
+        setExecutor("fly", new FlyCommand(this));
+        setExecutor("heal", new HealCommand(this));
+        setExecutor("feed", new FeedCommand(this));
         GamemodeCommand gamemodeCommand = new GamemodeCommand(this);
-        getCommand("gamemode").setExecutor(gamemodeCommand);
+        setExecutor("gamemode", gamemodeCommand, FeatureManager.Feature.GAMEMODE);
         getCommand("gamemode").setTabCompleter(gamemodeCommand);
-        getCommand("staffmode").setExecutor(new StaffModeCommand(this));
-        getCommand("stafflist").setExecutor(new StaffListCommand(this));
-        getCommand("staffchat").setExecutor(new StaffChatCommand(this));
-        getCommand("helpop").setExecutor(new HelpopCommand(this));
-        getCommand("report").setExecutor(new ReportCommand(this));
-        getCommand("rename").setExecutor(new RenameCommand(this));
-        getCommand("randomteleport").setExecutor(new RandomTeleportCommand(this));
-        getCommand("teleport").setExecutor(new TeleportCommand(this));
-        getCommand("alts").setExecutor(new AltsCommand(this));
-        getCommand("vanish").setExecutor(new VanishCommand(this));
-        getCommand("invsee").setExecutor(new InvseeCommand(this));
-        getCommand("profileviewer").setExecutor(new ProfileViewerCommand(this));
-        getCommand("punishments").setExecutor(new PunishmentHistoryCommand(this));
+        setExecutor("staffmode", new StaffModeCommand(this));
+        setExecutor("stafflist", new StaffListCommand(this), FeatureManager.Feature.STAFF_MODE);
+        setExecutor("staffchat", new StaffChatCommand(this), FeatureManager.Feature.STAFF_CHAT);
+        setExecutor("helpop", new HelpopCommand(this), FeatureManager.Feature.STAFF_ALERTS);
+        setExecutor("report", new ReportCommand(this), FeatureManager.Feature.STAFF_ALERTS);
+        setExecutor("rename", new RenameCommand(this));
+        setExecutor("randomteleport", new RandomTeleportCommand(this));
+        setExecutor("teleport", new TeleportCommand(this));
+        setExecutor("alts", new AltsCommand(this));
+        setExecutor("vanish", new VanishCommand(this), FeatureManager.Feature.STAFF_MODE);
+        setExecutor("invsee", new InvseeCommand(this));
+        setExecutor("profileviewer", new ProfileViewerCommand(this), FeatureManager.Feature.PROFILE_VIEWER);
+        setExecutor("punishments", new PunishmentHistoryCommand(this), FeatureManager.Feature.PUNISHMENTS);
         PunishmentCommand punishmentCommand = new PunishmentCommand(this);
-        getCommand("ban").setExecutor(punishmentCommand);
-        getCommand("tempban").setExecutor(punishmentCommand);
-        getCommand("mute").setExecutor(punishmentCommand);
-        getCommand("tempmute").setExecutor(punishmentCommand);
-        getCommand("warn").setExecutor(punishmentCommand);
-        getCommand("kick").setExecutor(punishmentCommand);
-        getCommand("blacklist").setExecutor(punishmentCommand);
-        getCommand("unban").setExecutor(punishmentCommand);
-        getCommand("unmute").setExecutor(punishmentCommand);
-        getCommand("unblacklist").setExecutor(punishmentCommand);
+        setExecutor("ban", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("tempban", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("mute", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("tempmute", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("warn", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("kick", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("blacklist", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("unban", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("unmute", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
+        setExecutor("unblacklist", punishmentCommand, FeatureManager.Feature.PUNISHMENTS);
 
         // Bounty
-        getCommand("bounty").setExecutor(new BountyCommand(this));
+        setExecutor("bounty", new BountyCommand(this), FeatureManager.Feature.BOUNTY);
 
         // Warps
         WarpCommand warpCmd = new WarpCommand(this);
         WarpManagerCommand warpManagerCmd = new WarpManagerCommand(this);
         WarpTabCompleter warpTabCompleter = new WarpTabCompleter(this);
-        getCommand("warp").setExecutor(warpCmd);
+        setExecutor("warp", warpCmd, FeatureManager.Feature.WARPS);
         getCommand("warp").setTabCompleter(warpTabCompleter);
-        getCommand("warpmanager").setExecutor(warpManagerCmd);
+        setExecutor("warpmanager", warpManagerCmd, FeatureManager.Feature.WARPS);
         getCommand("warpmanager").setTabCompleter(warpTabCompleter);
-        getCommand("setwarp").setExecutor(warpManagerCmd);
+        setExecutor("setwarp", warpManagerCmd, FeatureManager.Feature.WARPS);
         getCommand("setwarp").setTabCompleter(warpTabCompleter);
-        getCommand("delwarp").setExecutor(warpManagerCmd);
+        setExecutor("delwarp", warpManagerCmd, FeatureManager.Feature.WARPS);
         getCommand("delwarp").setTabCompleter(warpTabCompleter);
 
         PortalManagerCommand portalManagerCmd = new PortalManagerCommand(this);
         PortalTabCompleter portalTabCompleter = new PortalTabCompleter(this);
-        getCommand("portalmanager").setExecutor(portalManagerCmd);
+        setExecutor("portalmanager", portalManagerCmd, FeatureManager.Feature.PORTALS);
         getCommand("portalmanager").setTabCompleter(portalTabCompleter);
 
         // Misc toggles
-        getCommand("nightvision").setExecutor(new NightVisionCommand(this));
-        getCommand("phantom").setExecutor(new PhantomCommand(this));
-        getCommand("findplayer").setExecutor(new FindPlayerCommand(this));
-        getCommand("settings").setExecutor(new SettingsCommand(this));
+        setExecutor("nightvision", new NightVisionCommand(this), FeatureManager.Feature.NIGHT_VISION);
+        setExecutor("phantom", new PhantomCommand(this), FeatureManager.Feature.PHANTOM);
+        setExecutor("findplayer", new FindPlayerCommand(this), FeatureManager.Feature.FIND_PLAYER);
+        setExecutor("settings", new SettingsCommand(this), FeatureManager.Feature.SETTINGS);
 
         // Social / info
         SocialCommand socialCmd = new SocialCommand(this);
-        getCommand("discord").setExecutor(socialCmd);
-        getCommand("twitter").setExecutor(socialCmd);
-        getCommand("store").setExecutor(socialCmd);
-        getCommand("social").setExecutor(socialCmd);
+        setExecutor("discord", socialCmd, FeatureManager.Feature.SOCIAL);
+        setExecutor("twitter", socialCmd, FeatureManager.Feature.SOCIAL);
+        setExecutor("store", socialCmd, FeatureManager.Feature.SOCIAL);
+        setExecutor("social", socialCmd, FeatureManager.Feature.SOCIAL);
 
-        getCommand("rules").setExecutor(new RulesCommand(this));
-        getCommand("help").setExecutor(new HelpCommand(this));
-        getCommand("servers").setExecutor(new ServersCommand(this));
+        setExecutor("rules", new RulesCommand(this), FeatureManager.Feature.RULES);
+        setExecutor("help", new HelpCommand(this), FeatureManager.Feature.HELP);
+        setExecutor("servers", new ServersCommand(this), FeatureManager.Feature.NETWORK_SERVERS);
 
         // Billford
-        getCommand("billford").setExecutor(new BillfordCommand(this));
-        getCommand("spawner").setExecutor(new SpawnerCommand(this));
+        setExecutor("billford", new BillfordCommand(this), FeatureManager.Feature.BILLFORD);
+        setExecutor("spawner", new SpawnerCommand(this), FeatureManager.Feature.SPAWNERS);
 
         // Admin
-        getCommand("clearlag").setExecutor(new ClearLagCommand(this));
-        getCommand("cuboid").setExecutor(new CuboidCommand(this));
+        setExecutor("clearlag", new ClearLagCommand(this), FeatureManager.Feature.CLEAR_LAG);
+        setExecutor("cuboid", new CuboidCommand(this), FeatureManager.Feature.CUBOIDS);
         AmethystToolCommand amethystToolCommand = new AmethystToolCommand(this);
-        getCommand("amethysttool").setExecutor(amethystToolCommand);
+        setExecutor("amethysttool", amethystToolCommand, FeatureManager.Feature.AMETHYST_TOOLS);
         getCommand("amethysttool").setTabCompleter(amethystToolCommand);
         UltimateDonutSmpCommand ultimateDonutSmpCommand = new UltimateDonutSmpCommand(this);
-        getCommand("ultimatedonutsmp").setExecutor(ultimateDonutSmpCommand);
+        setExecutor("ultimatedonutsmp", ultimateDonutSmpCommand);
         getCommand("ultimatedonutsmp").setTabCompleter(ultimateDonutSmpCommand);
+    }
+
+    private void setExecutor(String commandName, CommandExecutor executor, FeatureManager.Feature... requiredFeatures) {
+        PluginCommand command = getCommand(commandName);
+        if (command == null) {
+            getLogger().warning("Command missing from plugin.yml: " + commandName);
+            return;
+        }
+
+        if (requiredFeatures == null || requiredFeatures.length == 0) {
+            command.setExecutor(executor);
+            return;
+        }
+
+        command.setExecutor(new FeatureCommandExecutor(this, executor, requiredFeatures));
+    }
+
+    @SuppressWarnings("unused")
+    private void setTabCompleter(String commandName, TabCompleter tabCompleter) {
+        PluginCommand command = getCommand(commandName);
+        if (command == null) {
+            getLogger().warning("Command missing from plugin.yml: " + commandName);
+            return;
+        }
+        command.setTabCompleter(tabCompleter);
     }
 
     private void registerVaultEconomyProvider() {
@@ -492,8 +522,9 @@ public final class UltimateDonutSmp extends JavaPlugin {
         getLogger().info("Vault economy provider registered.");
     }
 
-    private void initializeLunarRichPresenceManager() {
-        if (!configManager.getConfig().getBoolean("LUNAR-CLIENT.RICH-PRESENCE.ENABLED", true)) {
+    public void initializeLunarRichPresenceManager() {
+        if (!featureManager.isEnabled(FeatureManager.Feature.LUNAR_RICH_PRESENCE)
+                || !configManager.getConfig().getBoolean("LUNAR-CLIENT.RICH-PRESENCE.ENABLED", true)) {
             return;
         }
 
@@ -579,6 +610,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
     // ── Getters ───────────────────────────────────────────────────────────────
 
     public ConfigManager      getConfigManager()      { return configManager; }
+    public FeatureManager     getFeatureManager()     { return featureManager; }
     public DatabaseManager    getDatabaseManager()    { return databaseManager; }
     public PlayerDataManager  getPlayerDataManager()  { return playerDataManager; }
     public EconomyManager     getEconomyManager()     { return economyManager; }

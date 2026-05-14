@@ -25,7 +25,9 @@ public class KeyAllManager {
     }
 
     public boolean isEnabled() {
-        return plugin.getConfigManager().getConfig().getBoolean("KEY-ALL.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.KEY_ALL)
+                && plugin.getFeatureManager().isEnabled(FeatureManager.Feature.CRATES)
+                && plugin.getConfigManager().getConfig().getBoolean("KEY-ALL.ENABLED", true);
     }
 
     public int getEveryMinutes() {

@@ -189,7 +189,7 @@ public class SpawnerManager {
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SPAWNERS) && enabled;
     }
 
     public ItemStack createSpawnerItem(String typeKey, long amount) {

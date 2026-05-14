@@ -77,7 +77,8 @@ public class CombatManager {
     }
 
     public boolean isEnabled() {
-        return plugin.getConfigManager().getConfig()
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.COMBAT)
+                && plugin.getConfigManager().getConfig()
                 .getBoolean("COMBAT-MANAGER.ENABLED", true);
     }
 

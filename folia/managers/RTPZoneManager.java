@@ -35,7 +35,8 @@ public class RTPZoneManager {
     }
 
     public void reloadSettings() {
-        enabled = plugin.getConfigManager().getConfig().getBoolean("RTP-ZONE.ENABLED", true);
+        enabled = plugin.getFeatureManager().areEnabled(FeatureManager.Feature.RTP, FeatureManager.Feature.RTP_ZONE)
+                && plugin.getConfigManager().getConfig().getBoolean("RTP-ZONE.ENABLED", true);
         cuboidName = plugin.getConfigManager().getConfig().getString("RTP-ZONE.CUBOID", "");
         countdownSeconds = Math.max(1, plugin.getConfigManager().getConfig().getInt("RTP-ZONE.EVERY", 30));
         titleTemplate = plugin.getConfigManager().getConfig().getString("RTP-ZONE.TITLE", "&c&lRTP Zone");
@@ -62,6 +63,11 @@ public class RTPZoneManager {
     }
 
     public void tick(Player player) {
+        if (!enabled) {
+            clearState(player);
+            return;
+        }
+
         if (plugin.getDuelManager() != null) {
             UUID uuid = player.getUniqueId();
             if (plugin.getDuelManager().isInDuel(uuid) || plugin.getDuelManager().isTransitioning(uuid)) {
@@ -70,7 +76,7 @@ public class RTPZoneManager {
             }
         }
 
-        if (!enabled || cuboidName == null || cuboidName.isBlank()) {
+        if (cuboidName == null || cuboidName.isBlank()) {
             clearState(player);
             return;
         }

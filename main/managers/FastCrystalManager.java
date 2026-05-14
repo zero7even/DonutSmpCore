@@ -20,7 +20,8 @@ public class FastCrystalManager {
     }
 
     public boolean isEnabled() {
-        return plugin.getConfigManager().getConfig()
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.FAST_CRYSTALS)
+                && plugin.getConfigManager().getConfig()
                 .getBoolean("FAST-CRYSTALS.ENABLED", true);
     }
 

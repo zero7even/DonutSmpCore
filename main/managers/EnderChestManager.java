@@ -42,7 +42,8 @@ public class EnderChestManager {
     }
 
     public boolean isEnabled() {
-        return getConfig().getBoolean(
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.ENDER_CHEST)
+                && getConfig().getBoolean(
                 "ENDER-CHEST.ENABLED",
                 plugin.getConfigManager().getConfig().getBoolean("ENDER-CHEST.SIX-ROW", false)
         );

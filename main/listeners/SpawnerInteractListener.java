@@ -23,6 +23,9 @@ public class SpawnerInteractListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
+        if (!plugin.getSpawnerManager().isEnabled()) {
+            return;
+        }
         if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }

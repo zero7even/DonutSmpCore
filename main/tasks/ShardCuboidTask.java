@@ -18,6 +18,9 @@ public class ShardCuboidTask implements Runnable {
     @Override
     public void run() {
         ShardManager shardManager = plugin.getShardManager();
+        if (shardManager == null || !shardManager.isEnabled()) {
+            return;
+        }
 
         plugin.getSpigotScheduler().forEachOnlinePlayer(player -> tickPlayer(player, shardManager));
     }

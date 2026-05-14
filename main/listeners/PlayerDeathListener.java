@@ -1,6 +1,7 @@
 package com.bx.ultimateDonutSmp.listeners;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
+import com.bx.ultimateDonutSmp.managers.FeatureManager;
 import com.bx.ultimateDonutSmp.models.PlayerData;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import com.bx.ultimateDonutSmp.utils.NumberUtils;
@@ -51,12 +52,15 @@ public class PlayerDeathListener implements Listener {
             if (killerData != null) {
                 killerData.addKill();
                 killerData.addKillStreak();
-                long shardsPerKill = plugin.getConfigManager().getConfig()
-                        .getLong("SETTINGS.SHARDS-PER-KILL", 1);
-                plugin.getShardManager().giveShards(killer, shardsPerKill, true);
+                if (plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SHARDS)) {
+                    long shardsPerKill = plugin.getConfigManager().getConfig()
+                            .getLong("SETTINGS.SHARDS-PER-KILL", 1);
+                    plugin.getShardManager().giveShards(killer, shardsPerKill, true);
+                }
             }
 
-            if (plugin.getBountyManager().hasBounty(victim.getUniqueId()) && !plugin.getBountyManager()
+            if (plugin.getFeatureManager().isEnabled(FeatureManager.Feature.BOUNTY)
+                    && plugin.getBountyManager().hasBounty(victim.getUniqueId()) && !plugin.getBountyManager()
                     .isExcludedWorld(victim.getWorld().getName())) {
                 double amount = plugin.getBountyManager().claimBounty(killer, victim.getUniqueId());
                 if (amount > 0) {

@@ -26,7 +26,8 @@ public class ClearLagManager {
     }
 
     public boolean isEnabled() {
-        return plugin.getConfigManager().getConfig().getBoolean("CLEAR-LAG.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.CLEAR_LAG)
+                && plugin.getConfigManager().getConfig().getBoolean("CLEAR-LAG.ENABLED", true);
     }
 
     public int getIntervalMinutes() {

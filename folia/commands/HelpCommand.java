@@ -46,7 +46,7 @@ public class HelpCommand implements CommandExecutor {
         sendHelpLine(player, "CRATE", "&b/crates &7- Open the crates menu");
         player.sendMessage(ColorUtils.toComponent("&b/balance &7- Check your balance"));
         sendHelpLine(player, "SHARDS", "&b/shards &7- Check your shards");
-        player.sendMessage(ColorUtils.toComponent("&b/bounty &7- View bounties"));
+        sendHelpLine(player, "BOUNTY", "&b/bounty &7- View bounties");
         sendHelpLine(player, "STATS", "&b/stats &7- View your stats");
         sendHelpLine(player, "LEADERBOARDS", "&b/leaderboard &7- View top players");
         sendHelpLine(player, "SETTINGS", "&b/settings &7- Player settings");

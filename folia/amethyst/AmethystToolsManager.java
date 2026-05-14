@@ -1,6 +1,7 @@
 package com.bx.ultimateDonutSmp.amethyst;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
+import com.bx.ultimateDonutSmp.managers.FeatureManager;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import com.bx.ultimateDonutSmp.utils.ItemUtils;
 import com.bx.ultimateDonutSmp.utils.NumberUtils;
@@ -56,6 +57,10 @@ public class AmethystToolsManager {
         KEY_ID = new NamespacedKey(plugin, "amethyst_tool_id");
     }
 
+    public boolean isEnabled() {
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.AMETHYST_TOOLS);
+    }
+
     public ItemStack createTool(AmethystToolType type, UUID ownerUuid, long durationSeconds) {
         ConfigurationSection cfg = getToolSection(type);
         if (cfg == null) {
@@ -105,7 +110,7 @@ public class AmethystToolsManager {
     }
 
     public boolean isAmethystTool(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
+        if (!isEnabled() || item == null || !item.hasItemMeta()) {
             return false;
         }
         return item.getItemMeta().getPersistentDataContainer().has(KEY_TYPE, PersistentDataType.STRING);

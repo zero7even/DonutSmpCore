@@ -290,6 +290,9 @@ public class ShardManager {
     }
 
     public ShardCuboidConfig findMatchingShardCuboid(Player player) {
+        if (!isEnabled()) {
+            return null;
+        }
         for (ShardCuboidConfig config : shardCuboidConfigs) {
             if (config.matches(player, plugin.getCuboidManager())) {
                 return config;
@@ -461,7 +464,12 @@ public class ShardManager {
     }
 
     public boolean isEverywhereEnabled() {
-        return plugin.getConfigManager().getConfig().getBoolean("SHARDS.EVERYWHERE.ENABLED", true);
+        return isEnabled()
+                && plugin.getConfigManager().getConfig().getBoolean("SHARDS.EVERYWHERE.ENABLED", true);
+    }
+
+    public boolean isEnabled() {
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SHARDS);
     }
 
     public int getEverywhereEveryMinutes() {

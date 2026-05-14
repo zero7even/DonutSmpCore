@@ -348,7 +348,8 @@ public class NetworkStaffChatManager {
     }
 
     private boolean isStaffChatEnabled() {
-        return getNetworkConfig().getBoolean("NETWORK.STAFF_CHAT_ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.STAFF_CHAT)
+                && getNetworkConfig().getBoolean("NETWORK.STAFF_CHAT_ENABLED", true);
     }
 
     private boolean isJoinLeaveEnabled() {

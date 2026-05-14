@@ -48,7 +48,9 @@ public class ScoreboardManager {
     }
 
     public boolean isEnabled() {
-        return runtimeSupported && plugin.getConfigManager().getScoreboard().getBoolean("SCOREBOARD.ENABLED", true);
+        return runtimeSupported
+                && plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SCOREBOARD)
+                && plugin.getConfigManager().getScoreboard().getBoolean("SCOREBOARD.ENABLED", true);
     }
 
     public boolean isRuntimeSupported() {

@@ -83,7 +83,8 @@ public class StaffModeManager {
     }
 
     public boolean isEnabled() {
-        return getConfig().getBoolean("STAFF-MODE.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.STAFF_MODE)
+                && getConfig().getBoolean("STAFF-MODE.ENABLED", true);
     }
 
     public boolean shouldPersistOnQuit() {
@@ -173,7 +174,7 @@ public class StaffModeManager {
     }
 
     public boolean isInStaffMode(UUID uuid) {
-        return uuid != null && activeStates.containsKey(uuid);
+        return isEnabled() && uuid != null && activeStates.containsKey(uuid);
     }
 
     public boolean isVanished(UUID uuid) {

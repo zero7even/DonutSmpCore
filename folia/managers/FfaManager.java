@@ -147,7 +147,8 @@ public class FfaManager {
     }
 
     public boolean isEnabled() {
-        return config().getBoolean("SETTINGS.ENABLED", true);
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.FFA)
+                && config().getBoolean("SETTINGS.ENABLED", true);
     }
 
     public boolean shouldBlockCommands() {

@@ -233,7 +233,7 @@ public class ConfigManager {
     }
 
     public boolean isCommandEnabled(String key) {
-        return config.getBoolean("COMMANDS." + key, true);
+        return FeatureManager.isCommandEnabled(config, key);
     }
 
     private boolean save(String name, FileConfiguration configuration) {
