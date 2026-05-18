@@ -257,20 +257,21 @@ public class WorthManager {
     public void syncWorthDisplay(Player player) {
         boolean enabled = isWorthDisplayEnabled(player);
 
-        Inventory inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
-            ItemStack current = inventory.getItem(slot);
-            ItemStack updated = updateWorthDisplay(current, enabled);
-            if (updated != current) {
-                inventory.setItem(slot, updated);
-            }
-        }
+        syncInventoryWorthDisplay(player.getInventory(), enabled);
 
         ItemStack cursor = player.getItemOnCursor();
         ItemStack updatedCursor = updateWorthDisplay(cursor, enabled);
         if (updatedCursor != cursor) {
             player.setItemOnCursor(updatedCursor);
         }
+    }
+
+    public void syncWorthDisplay(Player player, Inventory inventory) {
+        if (player == null) {
+            return;
+        }
+
+        syncInventoryWorthDisplay(inventory, isWorthDisplayEnabled(player));
     }
 
     public ItemStack applyWorthDisplayForPlayer(Player player, ItemStack item) {
@@ -341,6 +342,20 @@ public class WorthManager {
             ItemStack stripped = stripWorthDisplay(current);
             if (stripped != current) {
                 inventory.setItem(slot, stripped);
+            }
+        }
+    }
+
+    private void syncInventoryWorthDisplay(Inventory inventory, boolean enabled) {
+        if (inventory == null) {
+            return;
+        }
+
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack current = inventory.getItem(slot);
+            ItemStack updated = updateWorthDisplay(current, enabled);
+            if (updated != current) {
+                inventory.setItem(slot, updated);
             }
         }
     }
