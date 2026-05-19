@@ -72,7 +72,11 @@ public class TablistManager {
         String teamSuffix = "";
         String iconHeadSkin = config().getString("TABLIST.ICON-HEAD-SKIN", "<head:%player_name%>");
         String iconMedia = config().getString("TABLIST.ICON-MEDIA", "");
-        String mediaBadge = resolveMediaBadge(player, iconMedia == null ? "" : iconMedia);
+        String normalizedIconMedia = iconMedia == null ? "" : iconMedia;
+        boolean includeMediaBadge = hasMediaBadgeIncludePermission(player);
+        String mediaIconBadge = resolveMediaIconBadge(player, normalizedIconMedia, includeMediaBadge);
+        String mediaPlusBadge = resolveMediaPlusBadge(player, includeMediaBadge);
+        String mediaBadge = resolveMediaBadge(mediaIconBadge, mediaPlusBadge, normalizedIconMedia);
         String nickname = resolveNickname(player);
 
         if (showTeam && teamName != null && !teamName.isBlank()) {
@@ -95,7 +99,11 @@ public class TablistManager {
                 .replace("<player>", player.getName())
                 .replace("<nick>", nickname)
                 .replace("<icon_head_skin>", iconHeadSkin == null ? "" : iconHeadSkin)
-                .replace("<icon_media>", iconMedia == null ? "" : iconMedia)
+                .replace("<icon_media>", normalizedIconMedia)
+                .replace("%media_icon_badge%", mediaIconBadge)
+                .replace("<media_icon_badge>", mediaIconBadge)
+                .replace("%media_plus_badge%", mediaPlusBadge)
+                .replace("<media_plus_badge>", mediaPlusBadge)
                 .replace("%media_badge%", mediaBadge)
                 .replace("<media_badge>", mediaBadge)
                 .replace("<icon_media_plus>", mediaBadge)
@@ -158,19 +166,74 @@ public class TablistManager {
         return config().getString(path, "");
     }
 
-    private String resolveMediaBadge(Player player, String iconMedia) {
-        String badgeFormat = config().getString("TABLIST.MEDIA-BADGE-FORMAT", "<icon_media>&#37BFF9+");
+    private boolean hasMediaBadgeIncludePermission(Player player) {
+        String permission = config().getString(
+                "TABLIST.MEDIA-BADGE-INCLUDE-PERMISSION",
+                "ʀᴀɴᴋ.ᴍᴇᴅɪᴀ.ɪɴᴄʟᴜᴅᴇ"
+        );
+        return permission != null && !permission.isBlank() && player.hasPermission(permission);
+    }
+
+    private String resolveMediaIconBadge(Player player, String iconMedia, boolean includeMediaBadge) {
+        String iconFormat = config().getString("TABLIST.MEDIA-ICON-FORMAT", "&d<icon_media>");
         String permission = config().getString("TABLIST.MEDIA-BADGE-PERMISSION", "");
 
-        if (badgeFormat == null || badgeFormat.isBlank() || iconMedia.isBlank()) {
+        if (iconFormat == null || iconFormat.isBlank() || iconMedia.isBlank()) {
             return "";
         }
 
-        if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
+        if (!includeMediaBadge && permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
             return "";
         }
 
-        return badgeFormat.replace("<icon_media>", iconMedia);
+        return iconFormat.replace("<icon_media>", iconMedia);
+    }
+
+    private String resolveMediaPlusBadge(Player player, boolean includeMediaBadge) {
+        String plusFormat = config().getString("TABLIST.MEDIA-PLUS-FORMAT", "&#37BFF9+");
+        String permission = config().getString("TABLIST.MEDIA-PLUS-PERMISSION", "ʀᴀɴᴋ.ᴍᴇᴅɪᴀ.ᴘʟᴜѕ");
+
+        if (plusFormat == null || plusFormat.isBlank()) {
+            return "";
+        }
+
+        if (!includeMediaBadge && permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
+            return "";
+        }
+
+        return plusFormat;
+    }
+
+    private String resolveMediaBadge(String mediaIconBadge, String mediaPlusBadge, String iconMedia) {
+        String badgeFormat = config().getString(
+                "TABLIST.MEDIA-BADGE-FORMAT",
+                "<media_icon_badge><media_plus_badge>"
+        );
+
+        if (badgeFormat == null || badgeFormat.isBlank()) {
+            return "";
+        }
+
+        if (!usesSplitMediaBadgePlaceholders(badgeFormat)) {
+            if (mediaIconBadge.isBlank() || iconMedia.isBlank()) {
+                return "";
+            }
+            return badgeFormat.replace("<icon_media>", iconMedia);
+        }
+
+        return badgeFormat
+                .replace("%media_icon_badge%", mediaIconBadge)
+                .replace("<media_icon_badge>", mediaIconBadge)
+                .replace("%media_plus_badge%", mediaPlusBadge)
+                .replace("<media_plus_badge>", mediaPlusBadge)
+                .replace("<icon_media>", mediaIconBadge.isBlank() ? "" : iconMedia);
+    }
+
+    private boolean usesSplitMediaBadgePlaceholders(String text) {
+        return text.contains("%media_icon_badge%")
+                || text.contains("<media_icon_badge>")
+                || text.contains("%media_plus_badge%")
+                || text.contains("<media_plus_badge>");
     }
 
     private String applyInternalPlaceholders(String text, Player player) {
