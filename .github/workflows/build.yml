@@ -44,11 +44,20 @@ jobs:
           cd github
           pwsh scripts/build-compat.ps1 -Target Folia
 
-      - name: Upload Artifacts
+      - name: Upload Paper Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UltimateDonutSMP-Jars
+          name: UltimateDonutSMP-Paper
           path: |
-            dist/*.jar
-            github/dist/*.jar
+            dist/*paper-spigot*.jar
+            github/dist/*paper-spigot*.jar
+          if-no-files-found: error
+
+      - name: Upload Folia Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDonutSMP-Folia
+          path: |
+            dist/*folia*.jar
+            github/dist/*folia*.jar
           if-no-files-found: error
