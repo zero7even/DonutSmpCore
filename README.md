@@ -12,7 +12,6 @@
 <p align="center">
   <img alt="Java 21" src="https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white">
   <img alt="Paper, Spigot, and Folia" src="https://img.shields.io/badge/Platform-Paper%20%7C%20Spigot%20%7C%20Folia-2ea44f?style=for-the-badge">
-  <img alt="Distribution" src="https://img.shields.io/badge/Access-Commercial-red?style=for-the-badge">
 </p>
 
 ## Overview
