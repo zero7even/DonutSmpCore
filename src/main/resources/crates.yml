@@ -51,6 +51,7 @@ SETTINGS:
   PREVIEW:
     ENABLED: true # Enables or disables the floating items preview.
     OFFSET-Y: 1.25 # The vertical offset above the crate block for the preview item.
+    UPDATE-INTERVAL-TICKS: 2 # How often to update the rotation/hover on the server (1 = every tick, 2 = every 2 ticks, etc). Higher values reduce server lag.
     CYCLE-INTERVAL-TICKS: 40 # Cycle to the next reward item every 2 seconds.
     ROTATION-SPEED: 4.0 # Rotation speed factor in degrees per tick.
     HOVER-AMPLITUDE: 0.08 # Maximum vertical distance to float up and down.

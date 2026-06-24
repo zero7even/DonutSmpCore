@@ -854,6 +854,10 @@ public class CrateVisualManager {
         return plugin.getConfigManager().getCrates().getDouble("SETTINGS.PREVIEW.OFFSET-Y", 1.25D);
     }
 
+    private int getPreviewUpdateIntervalTicks() {
+        return Math.max(1, plugin.getConfigManager().getCrates().getInt("SETTINGS.PREVIEW.UPDATE-INTERVAL-TICKS", 2));
+    }
+
     private int getPreviewCycleIntervalTicks() {
         return plugin.getConfigManager().getCrates().getInt("SETTINGS.PREVIEW.CYCLE-INTERVAL-TICKS", 40);
     }
@@ -881,6 +885,10 @@ public class CrateVisualManager {
                     PersistentDataType.STRING,
                     formatBlockKey(toKey(block))
             );
+
+            int interval = getPreviewUpdateIntervalTicks();
+            itemDisplay.setInterpolationDuration(interval);
+            itemDisplay.setInterpolationDelay(0);
         });
 
         previews.put(toKey(block), display.getUniqueId());
@@ -925,6 +933,7 @@ public class CrateVisualManager {
             animationTask.cancel();
         }
         animationPulse = 0;
+        long updateInterval = getPreviewUpdateIntervalTicks();
         animationTask = plugin.getSpigotScheduler().runGlobalTimer(() -> {
             if (!isCratesEnabled() || !isPreviewEnabled()) {
                 if (animationTask != null) {
@@ -933,9 +942,9 @@ public class CrateVisualManager {
                 }
                 return;
             }
-            animationPulse++;
+            animationPulse += updateInterval;
             animatePreviews();
-        }, 1L, 1L);
+        }, updateInterval, updateInterval);
     }
 
     private void animatePreviews() {
@@ -943,6 +952,7 @@ public class CrateVisualManager {
         double hoverAmplitude = plugin.getConfigManager().getCrates().getDouble("SETTINGS.PREVIEW.HOVER-AMPLITUDE", 0.08D);
         double hoverSpeed = plugin.getConfigManager().getCrates().getDouble("SETTINGS.PREVIEW.HOVER-SPEED", 0.08D);
         int cycleInterval = getPreviewCycleIntervalTicks();
+        int updateInterval = getPreviewUpdateIntervalTicks();
 
         for (Map.Entry<CrateManager.CrateBlockKey, UUID> entry : new HashMap<>(previews).entrySet()) {
             CrateManager.CrateBlockKey key = entry.getKey();
@@ -951,6 +961,11 @@ public class CrateVisualManager {
             Entity entity = Bukkit.getEntity(entityId);
             if (!(entity instanceof ItemDisplay display) || !entity.isValid()) {
                 continue;
+            }
+
+            if (display.getInterpolationDuration() != updateInterval) {
+                display.setInterpolationDuration(updateInterval);
+                display.setInterpolationDelay(0);
             }
 
             float yaw = (float) ((animationPulse * rotationSpeed) % 360.0D);
@@ -971,7 +986,7 @@ public class CrateVisualManager {
 
             CrateManager.CrateDefinition crate = plugin.getCrateManager().getCrate(plugin.getCrateManager().getBoundBlockIds().get(key));
             if (crate != null && !crate.rewards().isEmpty()) {
-                int cycleTicks = previewCycleTicks.getOrDefault(key, 0) + 1;
+                int cycleTicks = previewCycleTicks.getOrDefault(key, 0) + updateInterval;
                 if (cycleTicks >= cycleInterval) {
                     cycleTicks = 0;
                     int nextIndex = (previewIndices.getOrDefault(key, 0) + 1) % crate.rewards().size();
