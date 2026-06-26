@@ -329,6 +329,22 @@ public class CrateManager {
         return deleted;
     }
 
+    public boolean unbindCrateBlock(String worldName, int x, int y, int z) {
+        if (worldName == null || worldName.isBlank()) {
+            return false;
+        }
+
+        boolean deleted = plugin.getDatabaseManager().deleteCrateBlock(
+                worldName,
+                x,
+                y,
+                z
+        );
+        boundBlocks.remove(new CrateBlockKey(worldName, x, y, z));
+        return deleted;
+    }
+
+
     public boolean hasAccess(Player player, CrateDefinition crate) {
         if (player == null || crate == null || !crate.enabled()) {
             return false;

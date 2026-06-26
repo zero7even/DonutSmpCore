@@ -34,7 +34,7 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
     private static final int TARGET_BLOCK_DISTANCE = 6;
     private static final List<String> PLAYER_SUBCOMMANDS = List.of("keys", "open");
     private static final List<String> ADMIN_SUBCOMMANDS = List.of(
-            "create", "delete", "type", "key", "take", "set", "add", "edit", "remove", "bind", "unbind", "info"
+            "create", "delete", "type", "key", "take", "set", "add", "edit", "remove", "bind", "unbind", "listbound", "info"
     );
     private static final List<String> OPEN_TYPE_COMPLETIONS = List.of("choose_one", "gacha");
     private static final List<String> AMOUNT_COMPLETIONS = List.of("1", "5", "10", "25", "64");
@@ -80,7 +80,8 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
             case "edit" -> handleRewardMutation(sender, label, args, RewardMutationMode.EDIT);
             case "remove" -> handleRewardMutation(sender, label, args, RewardMutationMode.REMOVE);
             case "bind" -> handleBind(sender, label, args);
-            case "unbind" -> handleUnbind(sender);
+            case "unbind" -> handleUnbind(sender, args);
+            case "listbound" -> handleListBound(sender);
             case "info" -> handleInfo(sender);
             default -> sendCrateUsage(sender, label);
         };
@@ -98,6 +99,21 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         }
 
         String subcommand = args[0].toLowerCase(Locale.ROOT);
+        if (subcommand.equals("unbind") && hasAdminPermission(sender)) {
+            if (args.length == 2) {
+                return partialMatches(args[1], unbindWorldSuggestions());
+            }
+            if (args.length == 3) {
+                return partialMatches(args[2], unbindXSuggestions(args[1]));
+            }
+            if (args.length == 4) {
+                return partialMatches(args[3], unbindYSuggestions(args[1], args[2]));
+            }
+            if (args.length == 5) {
+                return partialMatches(args[4], unbindZSuggestions(args[1], args[2], args[3]));
+            }
+        }
+
         if (args.length == 2) {
             return switch (subcommand) {
                 case "delete", "type", "add", "edit", "remove" -> hasAdminPermission(sender)
@@ -188,7 +204,8 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ᴇᴅɪᴛ <crate> [ѕʟᴏᴛ] &7- ᴇᴅɪᴛ ʀᴇᴡᴀʀᴅ ʙʏ ɢᴜɪ ᴏʀ ʜᴀɴᴅ"));
         sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ʀᴇᴍᴏᴠᴇ <crate> <slot> &7- ʀᴇᴍᴏᴠᴇ ᴀ ʀᴇᴡᴀʀᴅ"));
         sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ʙɪɴᴅ <crate|cancel> &7- ʙɪɴᴅ ᴀ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛ"));
-        sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ᴜɴʙɪɴᴅ &7- ᴜɴʙɪɴᴅ ᴛʜᴇ ʟᴏᴏᴋᴇᴅ-ᴀᴛ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛ"));
+        sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ᴜɴʙɪɴᴅ [world x y z] &7- ᴜɴʙɪɴᴅ ʙʏ ʟᴏᴏᴋ-ᴀᴛ ᴏʀ ᴄᴏᴏʀᴅѕ"));
+        sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ʟɪѕᴛʙᴏᴜɴᴅ &7- ʟɪѕᴛ ᴀʟʟ ʙᴏᴜɴᴅ ᴄʀᴀᴛᴇѕ ᴀɴᴅ ʟᴏᴄᴀᴛɪᴏɴѕ"));
         sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ɪɴꜰᴏ &7- ɪɴѕᴘᴇᴄᴛ ᴛʜᴇ ʟᴏᴏᴋᴇᴅ-ᴀᴛ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛ"));
         sender.sendMessage(ColorUtils.toComponent("&f/" + label + " ʀᴇʟᴏᴀᴅ &7- ʀᴇʟᴏᴀᴅ ᴄʀᴀᴛᴇ ѕᴇᴛᴛɪɴɢѕ"));
         sender.sendMessage(ColorUtils.toComponent("&7ᴘʟᴀʏᴇʀ ᴄᴏᴍᴍᴀɴᴅѕ: &f/crates &7ᴀɴᴅ &f/keys"));
@@ -478,14 +495,34 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean handleUnbind(CommandSender sender) {
+    private boolean handleUnbind(CommandSender sender, String[] args) {
         if (!PermissionUtils.has(sender, ADMIN_PERMISSION)) {
             sender.sendMessage(ColorUtils.toComponent("&cʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴘᴇʀᴍɪѕѕɪᴏɴ ᴛᴏ ᴜɴʙɪɴᴅ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛѕ."));
             return true;
         }
 
+        if (args.length >= 5) {
+            String worldName = args[1];
+            Integer x = parseInteger(args[2]);
+            Integer y = parseInteger(args[3]);
+            Integer z = parseInteger(args[4]);
+            if (x == null || y == null || z == null) {
+                sender.sendMessage(ColorUtils.toComponent("&cɪɴᴠᴀʟɪᴅ ᴄᴏᴏʀᴅɪɴᴀᴛᴇѕ. ᴜѕᴀɢᴇ: /crate unbind <world> <x> <y> <z>"));
+                return true;
+            }
+
+            if (!plugin.getCrateManager().unbindCrateBlock(worldName, x, y, z)) {
+                sender.sendMessage(ColorUtils.toComponent("&cꜰᴀɪʟᴇᴅ ᴛᴏ ᴜɴʙɪɴᴅ ᴛʜᴀᴛ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛ (ᴏʀ ɪᴛ ᴡᴀѕ ɴᴏᴛ ʙᴏᴜɴᴅ)."));
+                return true;
+            }
+
+            plugin.getCrateVisualManager().removeHologram(worldName, x, y, z);
+            sender.sendMessage(ColorUtils.toComponent("&aʀᴇᴍᴏᴠᴇᴅ ᴄʀᴀᴛᴇ ʙɪɴᴅɪɴɢ ᴀᴛ &f" + worldName + " " + x + "," + y + "," + z + "&a."));
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(ColorUtils.toComponent("&cᴏɴʟʏ ᴘʟᴀʏᴇʀѕ ᴄᴀɴ ᴜɴʙɪɴᴅ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛѕ."));
+            sender.sendMessage(ColorUtils.toComponent("&cᴏɴʟʏ ᴘʟᴀʏᴇʀѕ ᴄᴀɴ ᴜɴʙɪɴᴅ ᴄʀᴀᴛᴇ ᴄʜᴇѕᴛѕ ʙʏ ʟᴏᴏᴋɪɴɢ ᴀᴛ ᴛʜᴇᴍ. ᴜѕᴇ: /crate unbind <world> <x> <y> <z>"));
             return true;
         }
 
@@ -509,6 +546,35 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         plugin.getCrateVisualManager().removeHologram(target);
         player.sendMessage(ColorUtils.toComponent("&aʀᴇᴍᴏᴠᴇᴅ ᴄʀᴀᴛᴇ ʙɪɴᴅɪɴɢ ꜰʀᴏᴍ &f" + formatBlockLocation(target) + "&a."));
         return true;
+    }
+
+    private boolean handleListBound(CommandSender sender) {
+        if (!PermissionUtils.has(sender, ADMIN_PERMISSION)) {
+            sender.sendMessage(ColorUtils.toComponent("&cʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴘᴇʀᴍɪѕѕɪᴏɴ ᴛᴏ ʟɪѕᴛ ʙᴏᴜɴᴅ ᴄʀᴀᴛᴇѕ."));
+            return true;
+        }
+
+        var bound = plugin.getCrateManager().getBoundBlockIds();
+        if (bound.isEmpty()) {
+            sender.sendMessage(ColorUtils.toComponent("&cɴᴏ ᴄʀᴀᴛᴇѕ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ʙᴏᴜɴᴅ."));
+            return true;
+        }
+
+        sender.sendMessage(ColorUtils.toComponent("&8&m-------- &bʙᴏᴜɴᴅ ᴄʀᴀᴛᴇѕ &8&m--------"));
+        for (var entry : bound.entrySet()) {
+            var key = entry.getKey();
+            sender.sendMessage(ColorUtils.toComponent("&7- &f" + key.world() + " &7(&f" + key.x() + "," + key.y() + "," + key.z() + "&7) -> &b" + entry.getValue()));
+        }
+        sender.sendMessage(ColorUtils.toComponent("&8&m--------------------------------"));
+        return true;
+    }
+
+    private Integer parseInteger(String input) {
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private boolean handleInfo(CommandSender sender) {
@@ -662,6 +728,42 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         StringUtil.copyPartialMatches(token, completions, matches);
         matches.sort(String.CASE_INSENSITIVE_ORDER);
         return matches;
+    }
+
+    private List<String> unbindWorldSuggestions() {
+        return plugin.getCrateManager().getBoundBlockIds().keySet().stream()
+                .map(CrateManager.CrateBlockKey::world)
+                .distinct()
+                .toList();
+    }
+
+    private List<String> unbindXSuggestions(String world) {
+        return plugin.getCrateManager().getBoundBlockIds().keySet().stream()
+                .filter(key -> key.world().equalsIgnoreCase(world))
+                .map(key -> String.valueOf(key.x()))
+                .distinct()
+                .toList();
+    }
+
+    private List<String> unbindYSuggestions(String world, String xStr) {
+        Integer x = parseInteger(xStr);
+        if (x == null) return Collections.emptyList();
+        return plugin.getCrateManager().getBoundBlockIds().keySet().stream()
+                .filter(key -> key.world().equalsIgnoreCase(world) && key.x() == x)
+                .map(key -> String.valueOf(key.y()))
+                .distinct()
+                .toList();
+    }
+
+    private List<String> unbindZSuggestions(String world, String xStr, String yStr) {
+        Integer x = parseInteger(xStr);
+        Integer y = parseInteger(yStr);
+        if (x == null || y == null) return Collections.emptyList();
+        return plugin.getCrateManager().getBoundBlockIds().keySet().stream()
+                .filter(key -> key.world().equalsIgnoreCase(world) && key.x() == x && key.y() == y)
+                .map(key -> String.valueOf(key.z()))
+                .distinct()
+                .toList();
     }
 
     private record ResolvedTarget(UUID uuid, String name) {

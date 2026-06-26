@@ -203,7 +203,6 @@ public class CrateVisualManager {
     private void spawnHologram(Block block, CrateManager.CrateDefinition crate) {
         CrateManager.CrateBlockKey key = toKey(block);
         removeTrackedGlobalHologram(key);
-        purgeNearbyDisplaysForCrate(key);
 
         List<String> lines = getHologramLines(crate);
         if (lines.isEmpty()) {
@@ -394,6 +393,10 @@ public class CrateVisualManager {
         if (shouldShowToOwner) {
             player.showEntity(plugin, display);
         }
+    }
+
+    public void removeHologram(String worldName, int x, int y, int z) {
+        removeHologram(new CrateManager.CrateBlockKey(worldName, x, y, z));
     }
 
     private void removeHologram(CrateManager.CrateBlockKey key) {
@@ -879,7 +882,6 @@ public class CrateVisualManager {
     private void spawnPreview(Block block, CrateManager.CrateDefinition crate) {
         CrateManager.CrateBlockKey key = toKey(block);
         removeTrackedPreview(key);
-        purgeNearbyDisplaysForCrate(key);
 
         if (!isPreviewEnabled() || crate.rewards().isEmpty()) {
             return;
