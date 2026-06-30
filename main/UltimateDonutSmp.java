@@ -103,6 +103,11 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        if (!checkMinecraftVersionSupport()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         instance = this;
 
         printStartupBanner();
@@ -822,6 +827,57 @@ public final class UltimateDonutSmp extends JavaPlugin {
         } catch (ClassNotFoundException ignored) {
             return false;
         }
+    }
+
+    private boolean checkMinecraftVersionSupport() {
+        boolean isFolia = isClassAvailable("io.papermc.paper.threadedregions.RegionizedServer");
+        String minVersion = isFolia ? "1.21.11" : "1.21.10";
+        String maxVersion = isFolia ? "26.1.2" : "26.2";
+        String platformName = isFolia ? "Folia" : "Spigot/Paper";
+
+        String bukkitVersion = getServer().getBukkitVersion();
+        String mcVersion = bukkitVersion.split("-")[0].trim();
+
+        if (compareVersions(mcVersion, minVersion) < 0 || compareVersions(mcVersion, maxVersion) > 0) {
+            getLogger().severe("====================================================");
+            getLogger().severe("ERROR: Unsupported Minecraft version!");
+            getLogger().severe("Platform detected: " + platformName);
+            getLogger().severe("Current MC Version: " + mcVersion);
+            getLogger().severe("Supported Range: " + minVersion + " - " + maxVersion);
+            getLogger().severe("The plugin is disabling itself.");
+            getLogger().severe("====================================================");
+            return false;
+        }
+        return true;
+    }
+
+    private int compareVersions(String v1, String v2) {
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+        int length = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < length; i++) {
+            int p1 = 0;
+            if (i < parts1.length) {
+                String clean = parts1[i].replaceAll("[^0-9]", "");
+                if (!clean.isEmpty()) {
+                    try {
+                        p1 = Integer.parseInt(clean);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            int p2 = 0;
+            if (i < parts2.length) {
+                String clean = parts2[i].replaceAll("[^0-9]", "");
+                if (!clean.isEmpty()) {
+                    try {
+                        p2 = Integer.parseInt(clean);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            if (p1 < p2) return -1;
+            if (p1 > p2) return 1;
+        }
+        return 0;
     }
 
     // ── Static accessor ───────────────────────────────────────────────────────
