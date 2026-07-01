@@ -535,12 +535,19 @@ public class PortalManager {
             return;
         }
 
-        List<UUID> entityIds = portalHolograms.get(portal.id());
-        for (int i = 0; i < entityIds.size(); i++) {
-            Entity entity = Bukkit.getEntity(entityIds.get(i));
-            if (entity instanceof TextDisplay display && entity.isValid()) {
-                display.setText(ColorUtils.toComponent(lines.get(i)));
-            }
+        List<UUID> entityIds;
+        synchronized (portalHolograms) {
+            entityIds = portalHolograms.get(portal.id());
+        }
+        if (entityIds != null) {
+            plugin.getSpigotScheduler().runRegion(baseLocation, () -> {
+                for (int i = 0; i < entityIds.size(); i++) {
+                    Entity entity = Bukkit.getEntity(entityIds.get(i));
+                    if (entity instanceof TextDisplay display && entity.isValid()) {
+                        display.setText(ColorUtils.toComponent(lines.get(i)));
+                    }
+                }
+            });
         }
     }
 
@@ -551,31 +558,38 @@ public class PortalManager {
             return;
         }
 
-        removePortalHologram(portal.id());
+        plugin.getSpigotScheduler().runRegion(baseLocation, () -> {
+            synchronized (portalHolograms) {
+                removePortalHologramLocally(portal.id(), baseLocation);
 
-        List<UUID> entityIds = new ArrayList<>();
-        double lineSpacing = getHologramLineSpacing();
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            Location lineLocation = baseLocation.clone().subtract(0D, i * lineSpacing, 0D);
-            TextDisplay display = baseLocation.getWorld().spawn(lineLocation, TextDisplay.class, textDisplay -> {
-                textDisplay.setText(ColorUtils.toComponent(line));
-                configureHologramDisplay(textDisplay);
-                textDisplay.addScoreboardTag(HOLOGRAM_TAG);
-                textDisplay.getPersistentDataContainer().set(
-                        plugin.getKey("portal_hologram"),
-                        PersistentDataType.STRING,
-                        portal.id()
-                );
-            });
-            entityIds.add(display.getUniqueId());
-        }
+                List<UUID> entityIds = new ArrayList<>();
+                double lineSpacing = getHologramLineSpacing();
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    Location lineLocation = baseLocation.clone().subtract(0D, i * lineSpacing, 0D);
+                    TextDisplay display = baseLocation.getWorld().spawn(lineLocation, TextDisplay.class, textDisplay -> {
+                        textDisplay.setText(ColorUtils.toComponent(line));
+                        configureHologramDisplay(textDisplay);
+                        textDisplay.addScoreboardTag(HOLOGRAM_TAG);
+                        textDisplay.getPersistentDataContainer().set(
+                                plugin.getKey("portal_hologram"),
+                                PersistentDataType.STRING,
+                                portal.id()
+                        );
+                    });
+                    entityIds.add(display.getUniqueId());
+                }
 
-        portalHolograms.put(portal.id(), entityIds);
+                portalHolograms.put(portal.id(), entityIds);
+            }
+        });
     }
 
     private boolean hasValidPortalHologram(String portalId, int requiredLines, Location baseLocation) {
-        List<UUID> trackedIds = portalHolograms.get(portalId);
+        List<UUID> trackedIds;
+        synchronized (portalHolograms) {
+            trackedIds = portalHolograms.get(portalId);
+        }
         if (trackedIds == null || trackedIds.size() != requiredLines) {
             return false;
         }
@@ -816,11 +830,20 @@ public class PortalManager {
     }
 
     private void removeLoadedPortalHologramOrphans(String portalId, Location baseLocation, int lineCount) {
-        List<UUID> trackedIds = portalHolograms.get(portalId);
+        if (baseLocation == null || baseLocation.getWorld() == null) {
+            return;
+        }
+
+        List<UUID> trackedIds;
+        synchronized (portalHolograms) {
+            trackedIds = portalHolograms.get(portalId);
+        }
         Set<UUID> tracked = trackedIds == null ? Set.of() : new HashSet<>(trackedIds);
 
-        for (World world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntitiesByClass(TextDisplay.class)) {
+        plugin.getSpigotScheduler().runRegion(baseLocation, () -> {
+            double radius = 2.0;
+            double verticalRadius = Math.max(2.0, lineCount * getHologramLineSpacing() + 1.0);
+            for (Entity entity : baseLocation.getWorld().getNearbyEntities(baseLocation, radius, verticalRadius, radius, candidate -> candidate instanceof TextDisplay)) {
                 if (!isManagedPortalHologram(entity) || tracked.contains(entity.getUniqueId())) {
                     continue;
                 }
@@ -829,7 +852,7 @@ public class PortalManager {
                     entity.remove();
                 }
             }
-        }
+        });
     }
 
     private boolean isAttachedToPortal(Entity entity, String portalId) {
@@ -854,43 +877,96 @@ public class PortalManager {
     }
 
     private void removePortalHologram(String portalId) {
-        removeTrackedPortalHologram(portalId);
+        PortalDefinition portal = portals.get(portalId);
+        if (portal != null) {
+            Location loc = getHologramLocation(portal);
+            if (loc != null && loc.getWorld() != null) {
+                plugin.getSpigotScheduler().runRegion(loc, () -> {
+                    synchronized (portalHolograms) {
+                        removePortalHologramLocally(portalId, loc);
+                    }
+                });
+                return;
+            }
+        }
+        synchronized (portalHolograms) {
+            removePortalHologramLocally(portalId, null);
+        }
+    }
 
-        for (World world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntitiesByClass(TextDisplay.class)) {
-                if (!isManagedPortalHologram(entity)) {
-                    continue;
+    private void removePortalHologramLocally(String portalId, Location loc) {
+        List<UUID> entityIds = portalHolograms.remove(portalId);
+        if (entityIds != null) {
+            for (UUID entityId : entityIds) {
+                Entity entity = Bukkit.getEntity(entityId);
+                if (entity != null && entity.isValid()) {
+                    entity.remove();
                 }
+            }
+        }
 
-                if (isAttachedToPortal(entity, portalId)) {
+        if (loc != null && loc.getWorld() != null) {
+            String expected = portalId;
+            for (Entity entity : loc.getWorld().getNearbyEntities(loc, 1.0, 3.0, 1.0, candidate -> candidate instanceof TextDisplay)) {
+                String attachedKey = entity.getPersistentDataContainer().get(plugin.getKey("portal_hologram"), PersistentDataType.STRING);
+                if (expected.equalsIgnoreCase(attachedKey)) {
                     entity.remove();
                 }
             }
         }
     }
 
-    private void removeTrackedPortalHologram(String portalId) {
-        List<UUID> entityIds = portalHolograms.remove(portalId);
-        if (entityIds == null) {
+    private void clearPortalHolograms() {
+        if (plugin.getSpigotScheduler().isFolia()) {
+            clearPortalHologramsFolia();
             return;
         }
 
-        for (UUID entityId : entityIds) {
-            Entity entity = Bukkit.getEntity(entityId);
-            if (entity != null && entity.isValid()) {
-                entity.remove();
+        synchronized (portalHolograms) {
+            for (String portalId : new HashSet<>(portalHolograms.keySet())) {
+                List<UUID> entityIds = portalHolograms.remove(portalId);
+                if (entityIds != null) {
+                    for (UUID entityId : entityIds) {
+                        Entity entity = Bukkit.getEntity(entityId);
+                        if (entity != null && entity.isValid()) {
+                            entity.remove();
+                        }
+                    }
+                }
             }
+            portalHolograms.clear();
         }
     }
 
-    private void clearPortalHolograms() {
-        for (String portalId : new HashSet<>(portalHolograms.keySet())) {
-            removeTrackedPortalHologram(portalId);
+    private void clearPortalHologramsFolia() {
+        synchronized (portalHolograms) {
+            for (Map.Entry<String, List<UUID>> entry : portalHolograms.entrySet()) {
+                String id = entry.getKey();
+                PortalDefinition portal = portals.get(id);
+                if (portal != null) {
+                    Location loc = getHologramLocation(portal);
+                    if (loc != null && loc.getWorld() != null) {
+                        List<UUID> ids = new ArrayList<>(entry.getValue());
+                        plugin.getSpigotScheduler().runRegion(loc, () -> {
+                            for (UUID uuid : ids) {
+                                Entity entity = Bukkit.getEntity(uuid);
+                                if (entity != null) {
+                                    entity.remove();
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            portalHolograms.clear();
         }
-        portalHolograms.clear();
     }
 
     private void purgeAllPortalHologramsInWorlds() {
+        if (plugin.getSpigotScheduler().isFolia()) {
+            return;
+        }
+
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntitiesByClass(TextDisplay.class)) {
                 if (isManagedPortalHologram(entity)) {

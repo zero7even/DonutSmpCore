@@ -13,14 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class RTPZoneManagerTest {
 
     @Test
-    void bundledConfigDefinesDefaultTitleFadeOut() throws Exception {
-        try (InputStream input = getClass().getResourceAsStream("/config.yml")) {
-            assertNotNull(input);
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(
-                    new InputStreamReader(input, StandardCharsets.UTF_8)
-            );
-            assertEquals(10, config.getInt("RTP-ZONE.TITLE-FADE-OUT-TICKS"));
-        }
+    void bundledConfigDefinesDefaultTitleFadeOut() {
+        var file = new java.io.File("src/main/resources/config.yml");
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        assertEquals(10, config.getInt("RTP-ZONE.TITLE-FADE-OUT-TICKS"));
     }
 
     @Test

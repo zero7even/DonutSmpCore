@@ -852,6 +852,11 @@ public final class UltimateDonutSmp extends JavaPlugin {
         String bukkitVersion = getServer().getBukkitVersion();
         String mcVersion = bukkitVersion.split("-")[0].trim();
 
+        String[] parts = mcVersion.split("\\.");
+        if (parts.length > 3) {
+            mcVersion = parts[0] + "." + parts[1] + "." + parts[2];
+        }
+
         if (compareVersions(mcVersion, minVersion) < 0 || compareVersions(mcVersion, maxVersion) > 0) {
             getLogger().severe("====================================================");
             getLogger().severe("ERROR: Unsupported Minecraft version!");

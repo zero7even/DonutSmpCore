@@ -152,7 +152,7 @@ public class MaintenanceManager {
 
         // Kick players who failed to transfer after 2 seconds (only in proxy mode)
         if (useProxy) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            plugin.getSpigotScheduler().runGlobalLater(() -> {
                 String kickMessage = config.getString("MAINTENANCE.MESSAGES.KICK_FALLBACK", "&cᴛʜɪѕ ѕᴇʀᴠᴇʀ ɪѕ ɪɴ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ ᴀɴᴅ ɴᴏ ʟᴏʙʙʏ ɪѕ ᴀᴠᴀɪʟᴀʙʟᴇ.");
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (!player.hasPermission(bypassPerm)) {

@@ -13,6 +13,7 @@ import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.bx.ultimateDonutSmp.UltimateDonutSmp;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,9 +27,20 @@ public final class SignInputUtil {
     private static final Map<UUID, BlockData> OLD_DATA = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> INPUT_LINE = new ConcurrentHashMap<>();
     private static final Map<UUID, Consumer<String>> CALLBACK = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> HIDE_TASK = new ConcurrentHashMap<>();
+    private static final Map<UUID, org.bukkit.scheduler.BukkitTask> HIDE_TASK = new ConcurrentHashMap<>();
     private static final Map<UUID, String[]> EXPECTED_LINES = new ConcurrentHashMap<>();
     private static final Map<UUID, List<String>> ORIGINAL_LINES = new ConcurrentHashMap<>();
+
+    private static com.bx.ultimateDonutSmp.utils.SpigotScheduler getScheduler(JavaPlugin plugin) {
+        if (plugin instanceof UltimateDonutSmp uds) {
+            return uds.getSpigotScheduler();
+        }
+        UltimateDonutSmp uds = (UltimateDonutSmp) Bukkit.getPluginManager().getPlugin("UltimateDonutSmp");
+        if (uds != null) {
+            return uds.getSpigotScheduler();
+        }
+        return null;
+    }
 
     public static final String META_SIGN_INPUT = "donutorder-sign-input";
 
@@ -99,24 +111,31 @@ public final class SignInputUtil {
 
         player.setMetadata(META_SIGN_INPUT, new FixedMetadataValue(plugin, true));
 
+        var scheduler = getScheduler(plugin);
+
         // Schedule timeout (45 seconds)
-        int taskId = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (PLUGINS.containsKey(uuid)) {
-                cancel(player);
-                player.sendMessage(org.bukkit.ChatColor.RED + "ѕɪɢɴ ɪɴᴘᴜᴛ ᴛɪᴍᴇᴅ ᴏᴜᴛ.");
-            }
-        }, 900L).getTaskId();
-        HIDE_TASK.put(uuid, taskId);
+        if (scheduler != null) {
+            org.bukkit.scheduler.BukkitTask task = scheduler.runEntityLater(player, () -> {
+                if (PLUGINS.containsKey(uuid)) {
+                    cancel(player);
+                    player.sendMessage(org.bukkit.ChatColor.RED + "ѕɪɢɴ ɪɴᴘᴜᴛ ᴛɪᴍᴇᴅ ᴏᴜᴛ.");
+                }
+            }, 900L);
+            HIDE_TASK.put(uuid, task);
+        }
 
         Location loc = placement.loc.clone();
         BlockData oldData = placement.oldData;
 
         // Close inventory on next tick to avoid visual glitches
-        Bukkit.getScheduler().runTask(plugin, () -> player.closeInventory());
+        if (scheduler != null) {
+            scheduler.runEntity(player, () -> player.closeInventory());
+        }
 
 
         // Place sign block in world on region thread / sync
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        if (scheduler != null) {
+            scheduler.runRegion(loc, () -> {
             Block block = loc.getBlock();
             block.setType(Material.OAK_SIGN, false);
 
@@ -156,21 +175,20 @@ public final class SignInputUtil {
             sign.update(true, false);
 
             // Open sign for player
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                player.sendBlockChange(loc, sign.getBlockData());
-                try {
-                    player.sendSignChange(loc, signLines);
-                } catch (Throwable ignored) {}
-                try {
-                    player.openSign(sign);
-                } catch (Throwable t) {
-                    finish(player, null);
-                }
-            });
+            player.sendBlockChange(loc, sign.getBlockData());
+            try {
+                player.sendSignChange(loc, signLines);
+            } catch (Throwable ignored) {}
+            try {
+                player.openSign(sign);
+            } catch (Throwable t) {
+                finish(player, null);
+            }
 
             // Hide from others immediately
             startHideFromOthers(plugin, player, loc, oldData);
         });
+        }
     }
 
     public static void cancel(Player player) {
@@ -188,19 +206,21 @@ public final class SignInputUtil {
         EXPECTED_LINES.remove(uuid);
         ORIGINAL_LINES.remove(uuid);
         Consumer<String> callback = CALLBACK.remove(uuid);
-        Integer taskId = HIDE_TASK.remove(uuid);
+        org.bukkit.scheduler.BukkitTask task = HIDE_TASK.remove(uuid);
 
-        if (taskId != null) {
-            Bukkit.getScheduler().cancelTask(taskId);
+        if (task != null) {
+            task.cancel();
         }
 
         if (player.hasMetadata(META_SIGN_INPUT)) {
             player.removeMetadata(META_SIGN_INPUT, plugin);
         }
 
-        if (loc != null && oldData != null && plugin != null) {
+        var scheduler = getScheduler(plugin);
+
+        if (loc != null && oldData != null && plugin != null && scheduler != null) {
             // Restore block in the world
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            scheduler.runRegion(loc, () -> {
                 Block block = loc.getBlock();
                 block.setBlockData(oldData, false);
                 player.sendBlockChange(loc, oldData);
@@ -209,7 +229,11 @@ public final class SignInputUtil {
         }
 
         if (callback != null) {
-            Bukkit.getScheduler().runTask(plugin, () -> callback.accept(text));
+            if (scheduler != null) {
+                scheduler.runEntity(player, () -> callback.accept(text));
+            } else {
+                callback.accept(text);
+            }
         }
     }
 
@@ -283,9 +307,12 @@ public final class SignInputUtil {
                         finish(player, null);
 
                         if (plugin != null && origLines != null && cb != null) {
-                            Bukkit.getScheduler().runTask(plugin, () -> {
-                                open(plugin, player, origLines, inputIdx, cb);
-                            });
+                            var scheduler = getScheduler(plugin);
+                            if (scheduler != null) {
+                                scheduler.runEntity(player, () -> {
+                                    open(plugin, player, origLines, inputIdx, cb);
+                                });
+                            }
                         }
                         return;
                     }

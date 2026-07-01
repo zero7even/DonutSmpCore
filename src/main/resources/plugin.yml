@@ -2,7 +2,7 @@ name: UltimateDonutSmp
 version: '${project.version}'
 main: com.bx.ultimateDonutSmp.UltimateDonutSmp
 api-version: '${minecraft.api.version}'
-folia-supported: ${folia.supported}
+folia-supported: true
 softdepend:
   - NickPlus
   - PlaceholderAPI

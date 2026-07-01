@@ -19,10 +19,8 @@ class HideIdentityPolicyTest {
 
     @Test
     void bundledConfigurationIsValid() {
-        var stream = getClass().getClassLoader().getResourceAsStream("hide.yml");
-        var config = YamlConfiguration.loadConfiguration(
-                new InputStreamReader(stream, StandardCharsets.UTF_8)
-        );
+        var file = new java.io.File("src/main/resources/hide.yml");
+        var config = YamlConfiguration.loadConfiguration(file);
 
         assertTrue(HideIdentityPolicy.validate(config).isEmpty());
     }

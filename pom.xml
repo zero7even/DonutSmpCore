@@ -25,7 +25,7 @@
         <server-api.artifactId>spigot-api</server-api.artifactId>
         <server-api.version>${spigot-api.version}</server-api.version>
         <source.directory>src/main/java</source.directory>
-        <folia.supported>false</folia.supported>
+        <folia.supported>true</folia.supported>
         <minecraft.api.version>1.21.10</minecraft.api.version>
         <server.variant>paper-spigot</server.variant>
         <server.supported.range>1.21.10-26.2</server.supported.range>
@@ -34,7 +34,7 @@
 
     <build>
         <defaultGoal>clean package</defaultGoal>
-        <finalName>UltimateDonutSmp-${project.version}-${server.variant}-${server.supported.range}</finalName>
+        <finalName>UltimateDonutSmp-${project.version}</finalName>
         <sourceDirectory>${source.directory}</sourceDirectory>
         <plugins>
             <plugin>
@@ -48,7 +48,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.5.2</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -218,49 +218,5 @@
         </dependency>
     </dependencies>
 
-    <profiles>
-        <profile>
-            <id>paper-mirror</id>
-            <properties>
-                <server-api.groupId>org.spigotmc</server-api.groupId>
-                <server-api.artifactId>spigot-api</server-api.artifactId>
-                <server-api.version>${spigot-api.version}</server-api.version>
-                <source.directory>main</source.directory>
-                <folia.supported>false</folia.supported>
-                <minecraft.api.version>1.21.10</minecraft.api.version>
-                <server.variant>paper-spigot</server.variant>
-                <server.supported.range>1.21.10-26.2</server.supported.range>
-            </properties>
-        </profile>
-        <profile>
-            <id>folia-mirror</id>
-            <properties>
-                <server-api.groupId>dev.folia</server-api.groupId>
-                <server-api.artifactId>folia-api</server-api.artifactId>
-                <server-api.version>${folia-api.version}</server-api.version>
-                <source.directory>folia</source.directory>
-                <folia.supported>true</folia.supported>
-                <minecraft.api.version>1.21.11</minecraft.api.version>
-                <server.variant>folia</server.variant>
-                <server.supported.range>1.21.11-26.1.2</server.supported.range>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <!-- Folia API ItemStack requires a live Paper registry/Craft delegate. -->
-                            <excludes>
-                                <exclude>**/AuctionBrowseEngineTest.java</exclude>
-                                <exclude>**/AuctionHouseRepositoryTest.java</exclude>
-                                <exclude>**/OrdersItemStackModelTest.java</exclude>
-                                <exclude>**/ShopManagerTest.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+
 </project>

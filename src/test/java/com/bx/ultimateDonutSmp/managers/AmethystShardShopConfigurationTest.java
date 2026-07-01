@@ -39,10 +39,7 @@ class AmethystShardShopConfigurationTest {
     }
 
     private YamlConfiguration loadResource() {
-        var stream = getClass().getClassLoader().getResourceAsStream("amethyst-tools.yml");
-        assertNotNull(stream, "amethyst-tools.yml");
-        return YamlConfiguration.loadConfiguration(
-                new InputStreamReader(stream, StandardCharsets.UTF_8)
-        );
+        var file = new java.io.File("src/main/resources/amethyst-tools.yml");
+        return YamlConfiguration.loadConfiguration(file);
     }
 }

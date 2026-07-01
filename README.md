@@ -100,19 +100,23 @@ The plugin starts without these soft dependencies. Their related placeholder, pe
 
 ## Building
 
-Use the platform-specific build scripts from the project root:
+Build the project using standard Maven or the build script:
 
 ```bat
-build-paper&spigot.bat
-build-folia.bat
+build.bat
 ```
 
-Each script first compiles the selected source set against the latest API published by the official server project, then packages the distributable jar against the oldest supported API. This catches forward API breakage without linking the release artifact to newer-only methods.
+Or run Maven directly:
 
-Generated artifacts are copied to `dist/`, and their names include the supported range:
+```bash
+mvn clean package
+```
 
-- `UltimateDonutSmp-1.3.3-paper-spigot-1.21.10-26.2.jar`
-- `UltimateDonutSmp-1.3.3-folia-1.21.11-26.1.2.jar`
+The build compiles the codebase against the target API and packages a single unified JAR that automatically detects and adapts to Paper, Spigot, or Folia at runtime.
+
+Generated artifact is saved to the `target/` directory:
+
+- `UltimateDonutSmp-1.3.jar` (shaded JAR)
 
 To run endpoint startup checks against official Paper and Folia server jars:
 

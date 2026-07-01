@@ -546,6 +546,14 @@ public final class SpigotScheduler {
         }
 
         private BukkitTask failed(String action, Exception exception) {
+            Throwable root = exception;
+            if (exception instanceof java.lang.reflect.InvocationTargetException && exception.getCause() != null) {
+                root = exception.getCause();
+            }
+            if (root.getClass().getName().contains("IllegalPluginAccessException") || !plugin.isEnabled()) {
+                plugin.getLogger().log(Level.FINE, "Could not schedule Folia " + action + " because the plugin is disabled or disabling.");
+                return new NoopTask(plugin, true);
+            }
             plugin.getLogger().log(Level.SEVERE, "Failed to schedule Folia " + action + ".", exception);
             return new NoopTask(plugin, true);
         }

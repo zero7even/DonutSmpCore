@@ -20,25 +20,25 @@ $matrix = @(
         Name = "paper-1.21.10"
         Project = "paper"
         Version = "1.21.10"
-        Plugin = "UltimateDonutSmp-1.3-paper-spigot-1.21.10-26.2.jar"
+        Plugin = "UltimateDonutSmp-1.3.jar"
     },
     @{
         Name = "paper-26.2"
         Project = "paper"
         Version = "26.2"
-        Plugin = "UltimateDonutSmp-1.3-paper-spigot-1.21.10-26.2.jar"
+        Plugin = "UltimateDonutSmp-1.3.jar"
     },
     @{
         Name = "folia-1.21.11"
         Project = "folia"
         Version = "1.21.11"
-        Plugin = "UltimateDonutSmp-1.3-folia-1.21.11-26.1.2.jar"
+        Plugin = "UltimateDonutSmp-1.3.jar"
     },
     @{
         Name = "folia-26.1.2"
         Project = "folia"
         Version = "26.1.2"
-        Plugin = "UltimateDonutSmp-1.3-folia-1.21.11-26.1.2.jar"
+        Plugin = "UltimateDonutSmp-1.3.jar"
     }
 )
 
@@ -143,7 +143,7 @@ function Invoke-SmokeServer {
         [hashtable]$Entry
     )
 
-    $pluginJar = Join-Path (Join-Path $projectRoot "dist") $Entry.Plugin
+    $pluginJar = Join-Path (Join-Path $projectRoot "target") $Entry.Plugin
     if (!(Test-Path -LiteralPath $pluginJar)) {
         throw "Missing plugin artifact: $pluginJar"
     }

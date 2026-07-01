@@ -77,12 +77,19 @@ public class DuelWorldManager {
     private String lastInvalidTerrainModeWarning = "";
     private boolean asyncChunkLoadMethodChecked;
     private Method asyncChunkLoadMethod;
+    private boolean runtimeWorldLifecycleWarningSent;
+    private boolean staticWorldAutoLoadWarningSent;
+    private boolean runtimeWorldCleanupWarningSent;
 
     public DuelWorldManager(UltimateDonutSmp plugin) {
         this.plugin = plugin;
     }
 
     private World createWorldWithoutSpawnMemory(WorldCreator creator) {
+        if (plugin.getSpigotScheduler().isFolia()) {
+            warnRuntimeWorldLifecycleUnsupported();
+            return null;
+        }
         World world = creator.createWorld();
         if (world != null) {
             world.setKeepSpawnInMemory(false);
@@ -94,6 +101,24 @@ public class DuelWorldManager {
         FileConfiguration config = config();
         if (!config.getBoolean(STATIC_WORLDS_PATH + ".ENABLED", true)
                 || !config.getBoolean(STATIC_WORLDS_PATH + ".AUTO_LOAD", true)) {
+            return;
+        }
+
+        if (plugin.getSpigotScheduler().isFolia()) {
+            List<String> unavailableWorlds = new ArrayList<>();
+            for (String worldName : config.getStringList(STATIC_WORLDS_PATH + ".WORLDS")) {
+                if (worldName == null || worldName.isBlank() || Bukkit.getWorld(worldName.trim()) != null) {
+                    continue;
+                }
+                unavailableWorlds.add(worldName.trim());
+            }
+
+            if (!unavailableWorlds.isEmpty() && !staticWorldAutoLoadWarningSent) {
+                staticWorldAutoLoadWarningSent = true;
+                plugin.getLogger().warning("Folia does not support runtime world loading. Duel static worlds were not loaded: "
+                        + String.join(", ", unavailableWorlds)
+                        + ". Configure duel arenas in worlds that are already loaded by the server.");
+            }
             return;
         }
 
@@ -114,7 +139,24 @@ public class DuelWorldManager {
     }
 
     public boolean isRandomBiomesEnabled() {
-        return config().getBoolean(RANDOM_BIOMES_PATH + ".ENABLED", true);
+        if (!config().getBoolean(RANDOM_BIOMES_PATH + ".ENABLED", true)) {
+            return false;
+        }
+
+        if (plugin.getSpigotScheduler().isFolia()) {
+            warnRuntimeWorldLifecycleUnsupported();
+            return false;
+        }
+        return true;
+    }
+
+    private void warnRuntimeWorldLifecycleUnsupported() {
+        if (runtimeWorldLifecycleWarningSent) {
+            return;
+        }
+        runtimeWorldLifecycleWarningSent = true;
+        plugin.getLogger().warning("Random-biome duel worlds are disabled on Folia because Folia does not support "
+                + "runtime world loading/unloading. Use configured static duel arenas in already-loaded worlds.");
     }
 
     public TerrainMode getTerrainMode() {
@@ -820,6 +862,15 @@ public class DuelWorldManager {
         Path worldFolder = null;
         if (world != null) {
             clearForceLoadedChunks(world);
+            if (plugin.getSpigotScheduler().isFolia()) {
+                generatedWorldNames.remove(worldName);
+                if (!runtimeWorldCleanupWarningSent) {
+                    runtimeWorldCleanupWarningSent = true;
+                    plugin.getLogger().warning("Folia does not support runtime world unloading. Generated duel world "
+                            + worldName + " remains loaded and was not deleted.");
+                }
+                return;
+            }
             worldFolder = world.getWorldFolder().toPath();
             Bukkit.unloadWorld(world, false);
         } else {

@@ -86,11 +86,9 @@ class PunishmentCommandPermissionTest {
         }
     }
 
-    private YamlConfiguration loadPluginYaml() throws Exception {
-        try (InputStream input = getClass().getResourceAsStream("/plugin.yml")) {
-            assertNotNull(input);
-            return YamlConfiguration.loadConfiguration(new InputStreamReader(input, StandardCharsets.UTF_8));
-        }
+    private YamlConfiguration loadPluginYaml() {
+        var file = new java.io.File("src/main/resources/plugin.yml");
+        return YamlConfiguration.loadConfiguration(file);
     }
 
     private static final class TestPermissible implements Permissible {

@@ -79,7 +79,7 @@ public class PlayerJoinQuitListener implements Listener {
                     plugin.getMaintenanceManager().sendToLobby(player, lobby);
                     event.setJoinMessage(null);
 
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    plugin.getSpigotScheduler().runEntityLater(player, () -> {
                         if (player.isOnline()) {
                             String kickMessage = plugin.getConfigManager().getNetwork().getString("MAINTENANCE.MESSAGES.KICK_FALLBACK", "&cᴛʜɪѕ ѕᴇʀᴠᴇʀ ɪѕ ɪɴ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ ᴀɴᴅ ɴᴏ ʟᴏʙʙʏ ɪѕ ᴀᴠᴀɪʟᴀʙʟᴇ.");
                             player.kickPlayer(ColorUtils.colorize(kickMessage));
@@ -107,7 +107,7 @@ public class PlayerJoinQuitListener implements Listener {
                     String lobbyWorld = plugin.getConfigManager().getNetwork().getString("MAINTENANCE.LOBBY_WORLD", "WORLD");
                     org.bukkit.World world = Bukkit.getWorld(lobbyWorld);
                     if (world != null) {
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        plugin.getSpigotScheduler().runEntityLater(player, () -> {
                             if (player.isOnline()) {
                                 player.teleport(world.getSpawnLocation());
                             }
@@ -123,7 +123,7 @@ public class PlayerJoinQuitListener implements Listener {
             String localServerId = plugin.getConfigManager().getNetwork().getString("NETWORK.LOCAL_SERVER_ID", "local");
             org.bukkit.Location savedLoc = plugin.getDatabaseManager().getMaintenanceLocation(player.getUniqueId(), localServerId);
             if (savedLoc != null) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getSpigotScheduler().runEntityLater(player, () -> {
                     if (player.isOnline()) {
                         player.teleport(savedLoc);
                         plugin.getDatabaseManager().deleteMaintenanceLocation(player.getUniqueId(), localServerId);

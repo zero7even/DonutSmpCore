@@ -27,7 +27,7 @@ public class UpdateManager {
      * Checks for updates asynchronously from the raw GitHub version file.
      */
     public void checkForUpdates() {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        plugin.getSpigotScheduler().runAsync(() -> {
             try {
                 URL url = URI.create(VERSION_URL).toURL();
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();

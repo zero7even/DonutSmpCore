@@ -3,6 +3,7 @@ package com.bx.ultimateDonutSmp.managers;
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
 import com.bx.ultimateDonutSmp.models.PlayerData;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
+import com.bx.ultimateDonutSmp.utils.PacketSidebarRenderer;
 import com.bx.ultimateDonutSmp.utils.ScoreboardNumberHider;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -17,7 +18,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,64 +40,208 @@ public class ScoreboardManager {
     }
 
     private final UltimateDonutSmp plugin;
+    private final boolean folia;
+
+    // Folia implementation fields
+    private final PacketSidebarRenderer sidebarRenderer;
+    private final Set<UUID> visiblePlayers;
+
+    // Spigot/Paper implementation fields
     private final ScoreboardNumberHider numberHider;
-    private final Map<UUID, Scoreboard> playerBoards = new HashMap<>();
-    private final boolean runtimeSupported;
+    private final Map<UUID, Scoreboard> playerBoards;
+
     private int titleIndex = 0;
 
     public ScoreboardManager(UltimateDonutSmp plugin) {
         this.plugin = plugin;
-        this.numberHider = new ScoreboardNumberHider(plugin);
-        this.runtimeSupported = !plugin.getSpigotScheduler().isFolia();
-        if (!runtimeSupported) {
-            plugin.getLogger().warning("Sidebar scoreboard is disabled on Folia because Bukkit scoreboards are not supported by this Folia build.");
+        this.folia = plugin.getSpigotScheduler().isFolia();
+        if (folia) {
+            this.sidebarRenderer = new PacketSidebarRenderer(plugin);
+            this.visiblePlayers = ConcurrentHashMap.newKeySet();
+            this.numberHider = null;
+            this.playerBoards = null;
+        } else {
+            this.sidebarRenderer = null;
+            this.visiblePlayers = null;
+            this.numberHider = new ScoreboardNumberHider(plugin);
+            this.playerBoards = new HashMap<>();
         }
     }
 
     public boolean isEnabled() {
-        return runtimeSupported
-                && plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SCOREBOARD)
+        return plugin.getFeatureManager().isEnabled(FeatureManager.Feature.SCOREBOARD)
                 && plugin.getConfigManager().getScoreboard().getBoolean("SCOREBOARD.ENABLED", true);
     }
 
     public boolean isRuntimeSupported() {
-        return runtimeSupported;
+        return true;
     }
 
     public void applyVisibility(Player player) {
-        if (!runtimeSupported) {
-            playerBoards.remove(player.getUniqueId());
-            return;
+        if (folia) {
+            if (!isEnabled()) {
+                releasePlayerFolia(player);
+                return;
+            }
+            if (!isVisibleFor(player)) {
+                hidePlayerFolia(player);
+                return;
+            }
+            updateFolia(player);
+        } else {
+            if (!isEnabled()) {
+                releaseOwnedBoardSpigot(player);
+                return;
+            }
+            if (!isVisibleFor(player)) {
+                hidePlayerSpigot(player);
+                return;
+            }
+            if (!playerBoards.containsKey(player.getUniqueId())) {
+                setupPlayerSpigot(player);
+                return;
+            }
+            updateSpigot(player);
         }
-        if (!isEnabled()) {
-            releaseOwnedBoard(player);
-            return;
-        }
-        if (!isVisibleFor(player)) {
-            hidePlayer(player);
-            return;
-        }
-
-        if (!playerBoards.containsKey(player.getUniqueId())) {
-            setupPlayer(player);
-            return;
-        }
-
-        update(player);
     }
 
-    /** Called once on player join, creates the board structure. */
+    /** Called once on player join. */
     public void setupPlayer(Player player) {
-        if (!runtimeSupported) {
-            playerBoards.remove(player.getUniqueId());
+        if (folia) {
+            setupPlayerFolia(player);
+        } else {
+            setupPlayerSpigot(player);
+        }
+    }
+
+    public void removePlayer(UUID uuid) {
+        if (folia) {
+            removePlayerFolia(uuid);
+        } else {
+            removePlayerSpigot(uuid);
+        }
+    }
+
+    public void update(Player player) {
+        if (folia) {
+            updateFolia(player);
+        } else {
+            updateSpigot(player);
+        }
+    }
+
+    public void updateAll() {
+        if (!isEnabled()) {
+            releaseAll();
             return;
         }
+
+        List<String> titles = plugin.getConfigManager().getScoreboard().getStringList("SCOREBOARD.TITLE");
+        if (!titles.isEmpty()) {
+            titleIndex = (titleIndex + 1) % titles.size();
+        }
+
+        if (folia) {
+            plugin.getSpigotScheduler().forEachOnlinePlayer(this::updateFolia);
+        } else {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                updateSpigot(player);
+            }
+        }
+    }
+
+    public void releaseAll() {
+        if (folia) {
+            releaseAllFolia();
+        } else {
+            releaseAllSpigot();
+        }
+    }
+
+    public void invalidateAll() {
+        if (!folia) {
+            playerBoards.clear();
+        }
+    }
+
+    public void invalidatePlayer(Player player) {
+        if (!folia) {
+            playerBoards.remove(player.getUniqueId());
+        }
+    }
+
+    // ── Folia Implementations ──────────────────────────────────────────────────
+
+    private void setupPlayerFolia(Player player) {
         if (!isEnabled()) {
-            releaseOwnedBoard(player);
+            releasePlayerFolia(player);
             return;
         }
         if (!isVisibleFor(player)) {
-            hidePlayer(player);
+            hidePlayerFolia(player);
+            return;
+        }
+        renderPlayerFolia(player);
+    }
+
+    private void removePlayerFolia(UUID uuid) {
+        visiblePlayers.remove(uuid);
+        sidebarRenderer.remove(uuid);
+    }
+
+    private void updateFolia(Player player) {
+        if (!isEnabled()) {
+            releasePlayerFolia(player);
+            return;
+        }
+        if (!isVisibleFor(player)) {
+            hidePlayerFolia(player);
+            return;
+        }
+        renderPlayerFolia(player);
+    }
+
+    private void renderPlayerFolia(Player player) {
+        sidebarRenderer.show(player, getTitle(player), getRenderedLines(player));
+        visiblePlayers.add(player.getUniqueId());
+    }
+
+    private void hidePlayerFolia(Player player) {
+        releasePlayerFolia(player);
+    }
+
+    private void releaseAllFolia() {
+        if (visiblePlayers.isEmpty()) {
+            return;
+        }
+        Set<UUID> uuids = Set.copyOf(visiblePlayers);
+        visiblePlayers.clear();
+        for (UUID uuid : uuids) {
+            Player player = plugin.getServer().getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                plugin.getSpigotScheduler().runEntity(player, () -> sidebarRenderer.hide(player));
+            } else {
+                sidebarRenderer.remove(uuid);
+            }
+        }
+    }
+
+    private void releasePlayerFolia(Player player) {
+        if (player == null || !visiblePlayers.remove(player.getUniqueId())) {
+            return;
+        }
+        sidebarRenderer.hide(player);
+    }
+
+    // ── Spigot/Paper Implementations ───────────────────────────────────────────
+
+    private void setupPlayerSpigot(Player player) {
+        if (!isEnabled()) {
+            releaseOwnedBoardSpigot(player);
+            return;
+        }
+        if (!isVisibleFor(player)) {
+            hidePlayerSpigot(player);
             return;
         }
 
@@ -105,39 +252,35 @@ public class ScoreboardManager {
 
         playerBoards.put(player.getUniqueId(), board);
         player.setScoreboard(board);
-        updateText(player, board, obj);
+        updateTextSpigot(player, board, obj);
     }
 
-    public void removePlayer(UUID uuid) {
+    private void removePlayerSpigot(UUID uuid) {
         playerBoards.remove(uuid);
     }
 
-    public void update(Player player) {
-        if (!runtimeSupported) {
-            playerBoards.remove(player.getUniqueId());
-            return;
-        }
+    private void updateSpigot(Player player) {
         if (!isEnabled()) {
-            releaseOwnedBoard(player);
+            releaseOwnedBoardSpigot(player);
             return;
         }
         if (!isVisibleFor(player)) {
-            hidePlayer(player);
+            hidePlayerSpigot(player);
             return;
         }
 
         Scoreboard board = playerBoards.get(player.getUniqueId());
         if (board == null) {
-            setupPlayer(player);
+            setupPlayerSpigot(player);
             return;
         }
 
         Objective obj = board.getObjective("sidebar");
         if (obj == null) return;
-        updateText(player, board, obj);
+        updateTextSpigot(player, board, obj);
     }
 
-    private void updateText(Player player, Scoreboard board, Objective obj) {
+    private void updateTextSpigot(Player player, Scoreboard board, Objective obj) {
         List<String> titles = plugin.getConfigManager().getScoreboard().getStringList("SCOREBOARD.TITLE");
         if (!titles.isEmpty()) {
             String title = titles.get(titleIndex % titles.size());
@@ -146,23 +289,77 @@ public class ScoreboardManager {
 
         List<String> lines = getLines(player);
         int count = Math.min(lines.size(), MAX_LINES);
-        syncLineSlots(board, obj, count);
+        syncLineSlotsSpigot(board, obj, count);
 
         for (int i = 0; i < count; i++) {
             Team team = board.getTeam("sb_" + i);
             if (team == null) continue;
             String text = ColorUtils.colorize(lines.get(i), player);
             text = alignSidebarIconColumn(text);
-            applyLine(team, text);
+            applyLineSpigot(team, text);
         }
 
         for (int i = count; i < MAX_LINES; i++) {
             Team team = board.getTeam("sb_" + i);
-            if (team != null) applyLine(team, "");
+            if (team != null) applyLineSpigot(team, "");
         }
 
         numberHider.hide(player, obj);
     }
+
+    private void syncLineSlotsSpigot(Scoreboard board, Objective obj, int count) {
+        for (int i = 0; i < count; i++) {
+            Team team = board.getTeam("sb_" + i);
+            if (team == null) {
+                team = board.registerNewTeam("sb_" + i);
+                team.addEntry(ENTRIES[i]);
+            }
+            obj.getScore(ENTRIES[i]).setScore(count - i);
+        }
+
+        for (int i = count; i < MAX_LINES; i++) {
+            board.resetScores(ENTRIES[i]);
+        }
+    }
+
+    private void applyLineSpigot(Team team, String text) {
+        if (text.length() <= 64) {
+            team.setPrefix(ColorUtils.toComponent(text));
+            team.setSuffix(ColorUtils.toComponent(""));
+            return;
+        }
+
+        int split = findSafeSplit(text, 64);
+        team.setPrefix(ColorUtils.toComponent(text.substring(0, split)));
+        team.setSuffix(ColorUtils.toComponent(text.substring(split, Math.min(text.length(), split + 64))));
+    }
+
+    private void hidePlayerSpigot(Player player) {
+        releaseOwnedBoardSpigot(player);
+    }
+
+    private void releaseAllSpigot() {
+        if (playerBoards.isEmpty()) {
+            return;
+        }
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            releaseOwnedBoardSpigot(player);
+        }
+        playerBoards.clear();
+    }
+
+    private void releaseOwnedBoardSpigot(Player player) {
+        Scoreboard board = playerBoards.remove(player.getUniqueId());
+        if (board == null || Bukkit.getScoreboardManager() == null) {
+            return;
+        }
+        if (player.getScoreboard() == board) {
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        }
+    }
+
+    // ── Common Shared Utilities ────────────────────────────────────────────────
 
     private List<String> getLines(Player player) {
         FileConfiguration scoreboard = plugin.getConfigManager().getScoreboard();
@@ -402,58 +599,24 @@ public class ScoreboardManager {
         };
     }
 
-    private void syncLineSlots(Scoreboard board, Objective obj, int count) {
-        for (int i = 0; i < count; i++) {
-            Team team = board.getTeam("sb_" + i);
-            if (team == null) {
-                team = board.registerNewTeam("sb_" + i);
-                team.addEntry(ENTRIES[i]);
-            }
-            obj.getScore(ENTRIES[i]).setScore(count - i);
-        }
-
-        for (int i = count; i < MAX_LINES; i++) {
-            board.resetScores(ENTRIES[i]);
-        }
-    }
-
-    private void applyLine(Team team, String text) {
-        if (text.length() <= 64) {
-            team.setPrefix(ColorUtils.toComponent(text));
-            team.setSuffix(ColorUtils.toComponent(""));
-            return;
-        }
-
-        int split = findSafeSplit(text, 64);
-        team.setPrefix(ColorUtils.toComponent(text.substring(0, split)));
-        team.setSuffix(ColorUtils.toComponent(text.substring(split, Math.min(text.length(), split + 64))));
-    }
-
-    private int findSafeSplit(String text, int max) {
-        if (max >= text.length()) return text.length();
-        int split = max;
-        if (split > 0 && text.charAt(split - 1) == '\u00A7') split--;
-        return split;
-    }
-
-    public void updateAll() {
-        if (!runtimeSupported) {
-            playerBoards.clear();
-            return;
-        }
-        if (!isEnabled()) {
-            releaseAll();
-            return;
-        }
-
+    private String getTitle(Player player) {
         List<String> titles = plugin.getConfigManager().getScoreboard().getStringList("SCOREBOARD.TITLE");
-        if (!titles.isEmpty()) {
-            titleIndex = (titleIndex + 1) % titles.size();
+        if (titles.isEmpty()) {
+            return ColorUtils.colorize("EconomySMP", player);
         }
+        return ColorUtils.colorize(titles.get(titleIndex % titles.size()), player);
+    }
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            update(player);
+    private List<String> getRenderedLines(Player player) {
+        List<String> lines = getLines(player);
+        List<String> rendered = new ArrayList<>(Math.min(lines.size(), MAX_LINES));
+        for (String line : lines) {
+            if (rendered.size() >= MAX_LINES) {
+                break;
+            }
+            rendered.add(alignSidebarIconColumn(ColorUtils.colorize(line, player)));
         }
+        return rendered;
     }
 
     private boolean isVisibleFor(Player player) {
@@ -461,29 +624,10 @@ public class ScoreboardManager {
         return data == null || data.isScoreboardVisible();
     }
 
-    private void hidePlayer(Player player) {
-        releaseOwnedBoard(player);
-    }
-
-    public void releaseAll() {
-        if (!runtimeSupported || playerBoards.isEmpty()) {
-            playerBoards.clear();
-            return;
-        }
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            releaseOwnedBoard(player);
-        }
-        playerBoards.clear();
-    }
-
-    private void releaseOwnedBoard(Player player) {
-        Scoreboard board = playerBoards.remove(player.getUniqueId());
-        if (board == null || !runtimeSupported || Bukkit.getScoreboardManager() == null) {
-            return;
-        }
-        if (player.getScoreboard() == board) {
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-        }
+    private int findSafeSplit(String text, int max) {
+        if (max >= text.length()) return text.length();
+        int split = max;
+        if (split > 0 && text.charAt(split - 1) == '\u00A7') split--;
+        return split;
     }
 }
