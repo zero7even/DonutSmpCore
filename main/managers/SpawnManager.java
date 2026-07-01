@@ -557,7 +557,7 @@ public class SpawnManager {
     }
 
     private SetupAreaTarget findNextSetupAreaTarget(AreaType type) {
-        FileConfiguration menus = plugin.getConfigManager().getMenus();
+        FileConfiguration menus = plugin.getConfigManager().getOriginalMenus();
         String menuPath = type == AreaType.SPAWN ? "SPAWN-MENU" : "AFK-MENU";
         if (menus.getConfigurationSection(menuPath) == null) {
             return null;

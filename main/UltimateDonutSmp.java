@@ -18,6 +18,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
+import org.bukkit.command.SimpleCommandMap;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Locale;
+import java.util.Map;
+import java.util.logging.Level;
 
 public final class UltimateDonutSmp extends JavaPlugin {
 
@@ -272,6 +280,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
         updateManager = new UpdateManager(this);
         updateManager.checkForUpdates();
 
+        syncCommands();
         getLogger().info("UltimateDonutSmp enabled successfully.");
     }
 
@@ -953,6 +962,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
             worthManager.clearWorthDisplay(player);
             worthManager.syncWorthDisplay(player);
         }
+        syncCommands();
     }
 
     public static UltimateDonutSmp getInstance() {
@@ -1255,5 +1265,51 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
     public CrashProtectionManager getCrashProtectionManager() {
         return crashProtectionManager;
+    }
+
+    public void syncCommands() {
+        syncCommandState("spawn", FeatureManager.Feature.SPAWN);
+        syncCommandState("afk", FeatureManager.Feature.AFK);
+        syncCommandState("warp", FeatureManager.Feature.WARPS);
+        syncCommandState("warpmanager", FeatureManager.Feature.WARPS);
+        syncCommandState("setwarp", FeatureManager.Feature.WARPS);
+        syncCommandState("delwarp", FeatureManager.Feature.WARPS);
+    }
+
+    private void syncCommandState(String commandName, FeatureManager.Feature feature) {
+        boolean enabled = featureManager.isEnabled(feature);
+        PluginCommand command = getCommand(commandName);
+        if (command == null) {
+            return;
+        }
+
+        try {
+            Method method = getServer().getClass().getMethod("getCommandMap");
+            CommandMap commandMap = (CommandMap) method.invoke(getServer());
+
+            Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
+            knownCommandsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
+
+            String fallbackPrefix = getDescription().getName().toLowerCase(Locale.ROOT);
+            String namespacedKey = fallbackPrefix + ":" + commandName;
+
+            if (enabled) {
+                if (!knownCommands.containsKey(commandName)) {
+                    commandMap.register(fallbackPrefix, command);
+                }
+            } else {
+                command.unregister(commandMap);
+                knownCommands.remove(commandName);
+                knownCommands.remove(namespacedKey);
+                for (String alias : command.getAliases()) {
+                    knownCommands.remove(alias);
+                    knownCommands.remove(fallbackPrefix + ":" + alias);
+                }
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Failed to sync command state for: " + commandName, e);
+        }
     }
 }
