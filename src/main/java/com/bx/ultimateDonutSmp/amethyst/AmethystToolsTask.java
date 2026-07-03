@@ -31,6 +31,10 @@ public class AmethystToolsTask implements Runnable {
         ItemStack[] contents = player.getInventory().getContents();
         for (int slot = 0; slot < contents.length; slot++) {
             ItemStack item = contents[slot];
+            if (item == null) {
+                continue;
+            }
+
             if (!manager.isAmethystTool(item)) {
                 continue;
             }

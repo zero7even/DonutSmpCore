@@ -295,36 +295,39 @@ public class AmethystToolsManager {
             return false;
         }
 
-        long remaining = getRemainingSeconds(item);
-        String timeStr = remaining > 0 ? NumberUtils.formatTimeLong(remaining) : "&cexpired";
+        AmethystToolType type = getToolType(item);
+        if (type == null) {
+            return false;
+        }
+        ConfigurationSection cfg = getToolSection(type);
+        if (cfg == null) {
+            return false;
+        }
 
-        boolean foundSelfDestruct = false;
-        List<String> newLore = new ArrayList<>(lore);
-        String replacement = ColorUtils.toComponent("&#BDC3C7" + timeStr);
-        String replacementPlain = ColorUtils.strip(replacement);
-        boolean changed = false;
-
-        for (int i = 0; i < newLore.size(); i++) {
-            String lineText = ColorUtils.strip(newLore.get(i));
-            if (lineText.toUpperCase(Locale.ROOT).contains("SELF DESTRUCT")) {
-                foundSelfDestruct = true;
-                continue;
-            }
-
-            if (foundSelfDestruct && !lineText.isBlank()) {
-                if (lineText.equals(replacementPlain)) {
-                    return false;
-                }
-                newLore.set(i, replacement);
-                changed = true;
+        List<String> templateLore = cfg.getStringList("LORE");
+        int targetIndex = -1;
+        for (int i = 0; i < templateLore.size(); i++) {
+            if (templateLore.get(i).contains("{time}")) {
+                targetIndex = i;
                 break;
             }
         }
 
-        if (!changed) {
+        if (targetIndex == -1 || targetIndex >= lore.size()) {
             return false;
         }
 
+        long remaining = getRemainingSeconds(item);
+
+        String timeStr = remaining > 0 ? NumberUtils.formatTimeLong(remaining) : "&cexpired";
+        String replacement = ColorUtils.toComponent("&#BDC3C7" + timeStr);
+
+        if (ColorUtils.strip(lore.get(targetIndex)).equals(ColorUtils.strip(replacement))) {
+            return false;
+        }
+
+        List<String> newLore = new ArrayList<>(lore);
+        newLore.set(targetIndex, replacement);
         meta.setLore(newLore);
         item.setItemMeta(meta);
         return true;
@@ -370,6 +373,10 @@ public class AmethystToolsManager {
             return true;
         }
 
+        if (changed) {
+            inventory.setItem(slot, item);
+        }
+
         return changed;
     }
 
@@ -408,6 +415,10 @@ public class AmethystToolsManager {
             inventory.setItem(slot, null);
             sendExpireFeedback(player, type, notifyExpired);
             return true;
+        }
+
+        if (changed) {
+            inventory.setItem(slot, item);
         }
 
         return changed;
@@ -469,6 +480,10 @@ public class AmethystToolsManager {
         if (isExpired(cursor)) {
             expireCursorItem(player, cursor, notifyExpired);
             return true;
+        }
+
+        if (changed) {
+            player.setItemOnCursor(cursor);
         }
 
         return changed;

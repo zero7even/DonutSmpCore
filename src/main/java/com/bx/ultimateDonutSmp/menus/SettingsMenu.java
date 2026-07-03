@@ -10,6 +10,7 @@ import com.bx.ultimateDonutSmp.utils.SoundUtils;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -308,20 +309,23 @@ public class SettingsMenu extends BaseMenu {
         double radiusSquared = radius * radius;
 
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
-            if (!(entity instanceof Monster monster)) {
+            if (!(entity instanceof LivingEntity living)) {
                 continue;
             }
-            if (monster.getType() == EntityType.PHANTOM) {
+            if (!(living instanceof Monster || living instanceof org.bukkit.entity.Slime || living instanceof org.bukkit.entity.Ghast)) {
                 continue;
             }
-            if (MobSpawnPolicy.isVanillaSpawnerMob(plugin, monster)) {
+            if (living.getType() == EntityType.PHANTOM) {
                 continue;
             }
-            if (monster.getLocation().distanceSquared(player.getLocation()) > radiusSquared) {
+            if (MobSpawnPolicy.isVanillaSpawnerMob(plugin, living)) {
+                continue;
+            }
+            if (living.getLocation().distanceSquared(player.getLocation()) > radiusSquared) {
                 continue;
             }
 
-            monster.remove();
+            living.remove();
         }
     }
 

@@ -27,5 +27,8 @@ class MobSpawnPolicyTest {
         assertFalse(MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(true, EntityType.ENDER_DRAGON, false));
         assertFalse(MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(true, EntityType.ELDER_GUARDIAN, false));
         assertFalse(MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(true, EntityType.WARDEN, false));
+
+        assertTrue(MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(true, EntityType.SLIME, false));
+        assertTrue(MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(true, EntityType.GHAST, false));
     }
 }

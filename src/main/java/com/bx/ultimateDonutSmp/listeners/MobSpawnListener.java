@@ -37,14 +37,14 @@ public class MobSpawnListener implements Listener {
             return;
         }
 
-        if (!(entity instanceof Monster)) return;
+        if (!(entity instanceof Monster || entity instanceof org.bukkit.entity.Slime || entity instanceof org.bukkit.entity.Ghast)) return;
         if (shouldCancelMobSpawn(entity.getLocation())) {
             event.setCancelled(true);
         }
     }
 
     private boolean shouldCancelPhantomSpawn(Location location) {
-        Player nearestPlayer = getNearestPlayer(
+        Player nearestPlayer = getNearestPlayer2D(
                 location,
                 plugin.getConfigManager().getConfig().getDouble("SETTINGS.PHANTOM-SPAWN-RADIUS", 40)
         );
@@ -89,6 +89,26 @@ public class MobSpawnListener implements Listener {
 
             nearestPlayer = player;
             nearestDistance = distance;
+        }
+
+        return nearestPlayer;
+    }
+
+    private Player getNearestPlayer2D(Location location, double radius) {
+        double radiusSquared = radius * radius;
+        Player nearestPlayer = null;
+        double nearestDistance = radiusSquared;
+
+        for (Player player : location.getWorld().getPlayers()) {
+            double dx = player.getLocation().getX() - location.getX();
+            double dz = player.getLocation().getZ() - location.getZ();
+            double distance2D = dx * dx + dz * dz;
+            if (distance2D > radiusSquared || distance2D >= nearestDistance) {
+                continue;
+            }
+
+            nearestPlayer = player;
+            nearestDistance = distance2D;
         }
 
         return nearestPlayer;

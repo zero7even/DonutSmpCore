@@ -60,7 +60,7 @@ public final class MobSpawnPolicy {
             LivingEntity entity
     ) {
         return entity != null && shouldRemoveFromPeriodicCleanup(
-                entity instanceof Monster,
+                entity instanceof Monster || entity instanceof org.bukkit.entity.Slime || entity instanceof org.bukkit.entity.Ghast,
                 entity.getType(),
                 isVanillaSpawnerMob(plugin, entity)
         );
