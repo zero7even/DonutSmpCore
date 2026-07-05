@@ -44,17 +44,79 @@ public class ClearLagManager {
         return plugin.getConfigManager().getConfig().getStringList("CLEAR-LAG.EXCLUDED-WORLDS");
     }
 
+    public boolean excludeNamed() {
+        return plugin.getConfigManager().getConfig().getBoolean("CLEAR-LAG.EXCLUDE-NAMED", true);
+    }
+
+    public boolean excludeTamed() {
+        return plugin.getConfigManager().getConfig().getBoolean("CLEAR-LAG.EXCLUDE-TAMED", true);
+    }
+
+    public List<String> getExcludedEntityTypes() {
+        return plugin.getConfigManager().getConfig().getStringList("CLEAR-LAG.EXCLUDED-ENTITY-TYPES");
+    }
+
+    public List<String> getExcludedItemMaterials() {
+        return plugin.getConfigManager().getConfig().getStringList("CLEAR-LAG.EXCLUDED-ITEM-MATERIALS");
+    }
+
     public int clearEntities() {
-        List<String> excluded = getExcludedWorlds();
+        List<String> excludedWorlds = getExcludedWorlds();
+        boolean checkNamed = excludeNamed();
+        boolean checkTamed = excludeTamed();
+        List<String> excludedTypes = getExcludedEntityTypes();
+        List<String> excludedMaterials = getExcludedItemMaterials();
+
         int count = 0;
         for (World world : Bukkit.getWorlds()) {
-            if (excluded.contains(world.getName())) continue;
+            if (excludedWorlds.contains(world.getName())) continue;
             for (Entity entity : world.getEntities()) {
+                if (entity instanceof Player) continue;
+
+                // Check named exclusion
+                if (checkNamed && entity.getCustomName() != null) continue;
+
+                // Check tamed exclusion
+                if (checkTamed && entity instanceof Tameable && ((Tameable) entity).isTamed()) continue;
+
+                // Check excluded entity type
+                boolean typeExcluded = false;
+                String typeName = entity.getType().name();
+                for (String t : excludedTypes) {
+                    if (typeName.equalsIgnoreCase(t)) {
+                        typeExcluded = true;
+                        break;
+                    }
+                }
+                if (typeExcluded) continue;
+
                 boolean remove = false;
-                if (clearDroppedItems() && entity instanceof Item) remove = true;
-                if (clearAnimals() && entity instanceof Animals) remove = true;
-                if (clearMonsters() && entity instanceof Monster) remove = true;
-                if (remove && !(entity instanceof Player)) {
+                if (entity instanceof Item) {
+                    if (clearDroppedItems()) {
+                        Item item = (Item) entity;
+                        String materialName = item.getItemStack().getType().name();
+                        boolean materialExcluded = false;
+                        for (String mat : excludedMaterials) {
+                            if (materialName.equalsIgnoreCase(mat)) {
+                                materialExcluded = true;
+                                break;
+                            }
+                        }
+                        if (!materialExcluded) {
+                            remove = true;
+                        }
+                    }
+                } else if (entity instanceof Animals) {
+                    if (clearAnimals()) {
+                        remove = true;
+                    }
+                } else if (entity instanceof Monster) {
+                    if (clearMonsters()) {
+                        remove = true;
+                    }
+                }
+
+                if (remove) {
                     entity.remove();
                     count++;
                 }
