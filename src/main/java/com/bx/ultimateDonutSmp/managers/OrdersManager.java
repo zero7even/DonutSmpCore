@@ -3994,4 +3994,63 @@ public class OrdersManager {
             this.priceEach = priceEach;
         }
     }
+
+    public int countActiveBotOrders(java.util.Collection<String> botNames) {
+        if (botNames == null || botNames.isEmpty()) {
+            return 0;
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("select count(*) from orders where status = 'ACTIVE' and expires_at > ? and owner_name in (");
+        for (int i = 0; i < botNames.size(); i++) {
+            builder.append("?");
+            if (i < botNames.size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append(")");
+        try (PreparedStatement ps = connection().prepareStatement(builder.toString())) {
+            ps.setLong(1, System.currentTimeMillis());
+            int index = 2;
+            for (String name : botNames) {
+                ps.setString(index++, name);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to count active bot orders", e);
+        }
+        return 0;
+    }
+
+    public synchronized long createBotOrderDirect(
+            UUID botUuid,
+            String botName,
+            ItemStack item,
+            String categoryKey,
+            int quantity,
+            double priceEach,
+            int durationHours
+    ) {
+        long now = System.currentTimeMillis();
+        long expiresAt = now + durationHours * 60L * 60L * 1000L;
+        double totalBudget = quantity * priceEach;
+        long orderId = insertOrder(
+                botUuid,
+                botName,
+                item,
+                categoryKey,
+                quantity,
+                priceEach,
+                totalBudget,
+                now,
+                expiresAt
+        );
+        if (orderId > 0) {
+            publishOrderEvent("CREATE", orderId);
+        }
+        return orderId;
+    }
 }

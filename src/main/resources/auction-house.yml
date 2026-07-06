@@ -298,3 +298,45 @@ SORTING:
     - PRICE_HIGHEST
     - EXPIRING_SOON
     - OLDEST
+
+# UDS setup: Simulated bot settings for listing items on the auction house.
+BOTS:
+  ENABLED: false # Set to true to enable simulated bot listings on the auction house.
+  MIN_CHECK_INTERVAL_SECONDS: 60 # Minimum time in seconds between bot listing attempts.
+  MAX_CHECK_INTERVAL_SECONDS: 300 # Maximum time in seconds between bot listing attempts.
+  CHANCE: 0.5 # Probability (0.0 to 1.0) of a bot listing an item when checked. (e.g. 0.5 = 50% chance).
+  MAX_ACTIVE_BOT_LISTINGS: 10 # Maximum number of bot-created listings allowed to be active at once.
+  MIN_DURATION_HOURS: 12 # Minimum listing duration in hours for bot items.
+  MAX_DURATION_HOURS: 48 # Maximum listing duration in hours for bot items.
+  BOT_NAMES:
+    - "Shopkeeper_Geralt"
+    - "Merchant_Yennefer"
+    - "Trader_Ciri"
+    - "Dandelion_Goods"
+    - "Zoltan_Deals"
+    - "Triss_Spells"
+    - "Vesemir_Armor"
+  ITEMS:
+    - MATERIAL: DIAMOND
+      MIN_AMOUNT: 1
+      MAX_AMOUNT: 8
+      MIN_PRICE: 200
+      MAX_PRICE: 400
+    - MATERIAL: GOLDEN_CARROT
+      MIN_AMOUNT: 16
+      MAX_AMOUNT: 64
+      MIN_PRICE: 100
+      MAX_PRICE: 300
+    - MATERIAL: IRON_PICKAXE
+      MIN_AMOUNT: 1
+      MAX_AMOUNT: 1
+      MIN_PRICE: 150
+      MAX_PRICE: 250
+    - MATERIAL: ENCHANTED_BOOK
+      MIN_AMOUNT: 1
+      MAX_AMOUNT: 1
+      MIN_PRICE: 500
+      MAX_PRICE: 1500
+      ENCHANTS:
+        - "sharpness:3"
+        - "unbreaking:3"

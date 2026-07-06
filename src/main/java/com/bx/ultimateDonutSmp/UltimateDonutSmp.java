@@ -71,6 +71,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
     private DuelManager duelManager;
     private FfaManager ffaManager;
     private AuctionHouseManager auctionHouseManager;
+    private AuctionOrderBotManager auctionOrderBotManager;
     private BillfordManager billfordManager;
     private LeaderboardManager leaderboardManager;
     private ScoreboardManager scoreboardManager;
@@ -196,6 +197,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
         duelManager = new DuelManager(this);
         ffaManager = new FfaManager(this);
         auctionHouseManager = new AuctionHouseManager(this);
+        auctionOrderBotManager = new AuctionOrderBotManager(this);
         billfordManager = new BillfordManager(this);
         billfordManager.load();
         leaderboardManager = new LeaderboardManager(this);
@@ -261,6 +263,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
         BillfordTask.start(this); // Billford trade rotation check (every 30 s)
         OrdersExpiryTask.start(this);
         AuctionHouseExpiryTask.start(this);
+        AuctionOrderBotTask.start(this);
         AmethystToolsTask.start(this);
         SpawnerGenerationTask.start(this);
         DuelMatchTask.start(this);
@@ -918,6 +921,9 @@ public final class UltimateDonutSmp extends JavaPlugin {
         duelManager.reload();
         ffaManager.reload();
         auctionHouseManager.reload();
+        if (auctionOrderBotManager != null) {
+            auctionOrderBotManager.reload();
+        }
         billfordManager.load();
         rtpManager.reload();
         portalManager.loadAll();
@@ -1151,6 +1157,10 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
     public AuctionHouseManager getAuctionHouseManager() {
         return auctionHouseManager;
+    }
+
+    public AuctionOrderBotManager getAuctionOrderBotManager() {
+        return auctionOrderBotManager;
     }
 
     public BillfordManager getBillfordManager() {

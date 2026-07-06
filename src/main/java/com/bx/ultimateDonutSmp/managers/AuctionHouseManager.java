@@ -1221,4 +1221,40 @@ public final class AuctionHouseManager {
             return hours * 60L * 60L * 1000L;
         }
     }
+
+    public int countActiveBotListings(java.util.Collection<String> botNames) {
+        long now = System.currentTimeMillis();
+        return (int) listingCache.get().stream()
+                .filter(listing -> listing.active() && listing.expiresAt() > now)
+                .filter(listing -> botNames.contains(listing.sellerName()))
+                .count();
+    }
+
+    public CompletableFuture<AuctionListing> createBotListingDirect(
+            UUID botUuid,
+            String botName,
+            ItemStack item,
+            double price,
+            int durationHours,
+            String categoryKey
+    ) {
+        long now = System.currentTimeMillis();
+        long expiresAt = now + TimeUnitHours.toMillis(durationHours);
+        return repository.createListing(
+                botUuid,
+                botName,
+                price,
+                0D,
+                item,
+                now,
+                expiresAt,
+                categoryKey,
+                Integer.MAX_VALUE
+        ).thenCompose(result -> {
+            if (result.created()) {
+                return refreshCache().thenApply(ignored -> result.listing());
+            }
+            return CompletableFuture.completedFuture(null);
+        });
+    }
 }

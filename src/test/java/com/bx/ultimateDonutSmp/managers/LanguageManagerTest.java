@@ -202,8 +202,8 @@ class LanguageManagerTest {
         added += mergeText(target, "CONFIG.INVSEE", "invsee.yml", false, List.of());
         added += mergeText(target, "CONFIG.FREEZE", "freeze.yml", false,
                 List.of("FREEZE.SERVER-NAME", "FREEZE.ALLOWED-COMMANDS"));
-        added += mergeText(target, "CONFIG.AUCTION_HOUSE", "auction-house.yml", false, List.of());
-        added += mergeText(target, "CONFIG.ORDERS", "orders.yml", false, List.of("CATEGORY_FILTERS"));
+        added += mergeText(target, "CONFIG.AUCTION_HOUSE", "auction-house.yml", false, List.of("BOTS.BOT_NAMES"));
+        added += mergeText(target, "CONFIG.ORDERS", "orders.yml", false, List.of("CATEGORY_FILTERS", "BOTS.BOT_NAMES"));
         added += mergeText(target, "CONFIG.DUELS", "duels.yml", false,
                 List.of("ARENA_SETTINGS", "MAP_SOURCES"));
         added += mergeText(target, "CONFIG.FFA", "ffa.yml", false, List.of("ARENA_SETTINGS"));
