@@ -97,6 +97,10 @@ public class WorthDisplayListener implements Listener {
             return;
         }
 
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
+
         if (isAmethystItem(event.getCurrentItem()) || isAmethystItem(event.getCursor())) {
             return;
         }
@@ -178,6 +182,9 @@ public class WorthDisplayListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof Player player) {
+            if (player.getGameMode() == GameMode.CREATIVE) {
+                return;
+            }
             ItemStack current = event.getItem().getItemStack();
             if (isAmethystItem(current)) {
                 return;
@@ -209,7 +216,7 @@ public class WorthDisplayListener implements Listener {
                         org.bukkit.entity.Item itemEntity = (org.bukkit.entity.Item) event.getClass().getMethod("getItem").invoke(event);
                         ItemStack current = itemEntity.getItemStack();
                         
-                        if (!isAmethystItem(current)) {
+                        if (player.getGameMode() != GameMode.CREATIVE && !isAmethystItem(current)) {
                             plugin.getWorthManager().stripStorageWorthDisplayForNativePickup(player);
                             queueRefresh(player, 1L);
                         }

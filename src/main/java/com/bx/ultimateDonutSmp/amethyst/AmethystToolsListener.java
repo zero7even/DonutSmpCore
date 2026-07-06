@@ -55,6 +55,9 @@ public class AmethystToolsListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
         ItemStack item = player.getInventory().getItemInMainHand();
         if (!manager.isAmethystTool(item)) {
             return;
@@ -183,6 +186,9 @@ public class AmethystToolsListener implements Listener {
         }
 
         Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
         ItemStack item = player.getInventory().getItemInMainHand();
         if (!manager.isAmethystTool(item)) {
             return;
@@ -324,6 +330,9 @@ public class AmethystToolsListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerConsume(PlayerItemConsumeEvent event) {
         Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
         ItemStack item = event.getItem();
         if (!manager.isAmethystTool(item)) {
             return;
@@ -346,6 +355,9 @@ public class AmethystToolsListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (player.getGameMode() == GameMode.CREATIVE) {
             return;
         }
 
@@ -431,6 +443,9 @@ public class AmethystToolsListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
 
         ItemStack oldCursor = event.getOldCursor();
         if (!manager.isAmethystTool(oldCursor)) {
@@ -475,6 +490,9 @@ public class AmethystToolsListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            return;
+        }
         Item droppedEntity = event.getItemDrop();
         ItemStack item = droppedEntity.getItemStack();
         if (!manager.isAmethystTool(item)) {
@@ -500,6 +518,9 @@ public class AmethystToolsListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityPickupItem(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        if (player.getGameMode() == GameMode.CREATIVE) {
             return;
         }
 
