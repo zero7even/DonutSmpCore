@@ -76,6 +76,9 @@ public final class AuctionOrderBotManager {
 
         auctionItems = new ArrayList<>();
         List<Map<?, ?>> itemsList = section.getMapList("ITEMS");
+        if (itemsList == null || itemsList.isEmpty()) {
+            itemsList = config.getMapList("ITEMS");
+        }
         if (itemsList != null) {
             for (Map<?, ?> map : itemsList) {
                 BotItemConfig itemConfig = BotItemConfig.fromMap(map);
@@ -111,6 +114,9 @@ public final class AuctionOrderBotManager {
 
         ordersItems = new ArrayList<>();
         List<Map<?, ?>> itemsList = section.getMapList("ITEMS");
+        if (itemsList == null || itemsList.isEmpty()) {
+            itemsList = config.getMapList("ITEMS");
+        }
         if (itemsList != null) {
             for (Map<?, ?> map : itemsList) {
                 BotItemConfig itemConfig = BotItemConfig.fromMap(map);
