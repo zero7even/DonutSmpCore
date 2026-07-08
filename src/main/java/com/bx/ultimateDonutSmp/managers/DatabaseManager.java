@@ -2,6 +2,7 @@ package com.bx.ultimateDonutSmp.managers;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
 import com.bx.ultimateDonutSmp.utils.ItemSerializationUtils;
+import com.bx.ultimateDonutSmp.utils.LazyLocation;
 import com.bx.ultimateDonutSmp.models.Bounty;
 import com.bx.ultimateDonutSmp.models.PlayerLogEntry;
 import com.bx.ultimateDonutSmp.models.FreezeState;
@@ -1768,9 +1769,9 @@ public class DatabaseManager {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    World w = Bukkit.getWorld(rs.getString("world"));
-                    if (w == null) continue;
-                    Location loc = new Location(w,
+                    String worldName = rs.getString("world");
+                    if (worldName == null) continue;
+                    Location loc = new LazyLocation(worldName,
                             rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"),
                             rs.getFloat("yaw"), rs.getFloat("pitch"));
                     homes.add(new Home(uuid, rs.getString("home_name"), loc));
@@ -1789,12 +1790,20 @@ public class DatabaseManager {
             ps.setString(1, home.getOwnerUuid().toString());
             ps.setString(2, home.getName());
             Location l = home.getLocation();
-            ps.setString(3, l.getWorld().getName());
-            ps.setDouble(4, l.getX());
-            ps.setDouble(5, l.getY());
-            ps.setDouble(6, l.getZ());
-            ps.setFloat(7, l.getYaw());
-            ps.setFloat(8, l.getPitch());
+            String worldName = null;
+            if (l != null) {
+                if (l instanceof LazyLocation lazy) {
+                    worldName = lazy.getWorldName();
+                } else if (l.getWorld() != null) {
+                    worldName = l.getWorld().getName();
+                }
+            }
+            ps.setString(3, worldName);
+            ps.setDouble(4, l != null ? l.getX() : 0.0);
+            ps.setDouble(5, l != null ? l.getY() : 0.0);
+            ps.setDouble(6, l != null ? l.getZ() : 0.0);
+            ps.setFloat(7, l != null ? l.getYaw() : 0.0f);
+            ps.setFloat(8, l != null ? l.getPitch() : 0.0f);
             ps.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save home", e);
@@ -1841,12 +1850,10 @@ public class DatabaseManager {
                 team.setFriendlyFireEnabled(rs.getInt("friendly_fire_enabled") == 1);
                 String worldName = rs.getString("home_world");
                 if (worldName != null) {
-                    World w = Bukkit.getWorld(worldName);
-                    if (w != null) {
-                        team.setHome(new Location(w,
-                                rs.getDouble("home_x"), rs.getDouble("home_y"), rs.getDouble("home_z"),
-                                rs.getFloat("home_yaw"), rs.getFloat("home_pitch")));
-                    }
+                    Location loc = new LazyLocation(worldName,
+                            rs.getDouble("home_x"), rs.getDouble("home_y"), rs.getDouble("home_z"),
+                            rs.getFloat("home_yaw"), rs.getFloat("home_pitch"));
+                    team.setHome(loc);
                 }
                 teams.add(team);
             }
@@ -1890,8 +1897,16 @@ public class DatabaseManager {
             ps.setString(1, team.getName());
             ps.setString(2, team.getLeaderUuid().toString());
             Location h = team.getHome();
+            String worldName = null;
             if (h != null) {
-                ps.setString(3, h.getWorld().getName());
+                if (h instanceof LazyLocation lazy) {
+                    worldName = lazy.getWorldName();
+                } else if (h.getWorld() != null) {
+                    worldName = h.getWorld().getName();
+                }
+            }
+            if (h != null && worldName != null) {
+                ps.setString(3, worldName);
                 ps.setDouble(4, h.getX());
                 ps.setDouble(5, h.getY());
                 ps.setDouble(6, h.getZ());
@@ -2009,10 +2024,10 @@ public class DatabaseManager {
         try (Statement st = connection.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM warps")) {
             while (rs.next()) {
-                World w = Bukkit.getWorld(rs.getString("world"));
-                if (w == null) continue;
+                String worldName = rs.getString("world");
+                if (worldName == null) continue;
                 warps.put(rs.getString("name").toLowerCase(),
-                        new Location(w, rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"),
+                        new LazyLocation(worldName, rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"),
                                 rs.getFloat("yaw"), rs.getFloat("pitch")));
             }
         } catch (SQLException e) {
@@ -2025,12 +2040,20 @@ public class DatabaseManager {
         try (PreparedStatement ps = connection.prepareStatement(
                 "REPLACE INTO warps (name, world, x, y, z, yaw, pitch) VALUES (?,?,?,?,?,?,?)")) {
             ps.setString(1, name.toLowerCase());
-            ps.setString(2, loc.getWorld().getName());
-            ps.setDouble(3, loc.getX());
-            ps.setDouble(4, loc.getY());
-            ps.setDouble(5, loc.getZ());
-            ps.setFloat(6, loc.getYaw());
-            ps.setFloat(7, loc.getPitch());
+            String worldName = null;
+            if (loc != null) {
+                if (loc instanceof LazyLocation lazy) {
+                    worldName = lazy.getWorldName();
+                } else if (loc.getWorld() != null) {
+                    worldName = loc.getWorld().getName();
+                }
+            }
+            ps.setString(2, worldName);
+            ps.setDouble(3, loc != null ? loc.getX() : 0.0);
+            ps.setDouble(4, loc != null ? loc.getY() : 0.0);
+            ps.setDouble(5, loc != null ? loc.getZ() : 0.0);
+            ps.setFloat(6, loc != null ? loc.getYaw() : 0.0f);
+            ps.setFloat(7, loc != null ? loc.getPitch() : 0.0f);
             ps.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save warp " + name, e);
