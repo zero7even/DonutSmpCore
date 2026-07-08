@@ -1536,9 +1536,9 @@ public class DatabaseManager {
         return 0;
     }
 
-    public int setCrateKeyAmount(UUID uuid, String crateId, int amount) {
+    public boolean setCrateKeyAmount(UUID uuid, String crateId, int amount) {
         if (connection == null || uuid == null || crateId == null || crateId.isBlank()) {
-            return 0;
+            return false;
         }
 
         int normalizedAmount = Math.max(0, amount);
@@ -1548,10 +1548,11 @@ public class DatabaseManager {
                 ps.setString(1, uuid.toString());
                 ps.setString(2, crateId);
                 ps.executeUpdate();
+                return true;
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to delete crate key balance for " + uuid + "/" + crateId, e);
+                return false;
             }
-            return 0;
         }
 
         try (PreparedStatement ps = connection.prepareStatement(
@@ -1561,11 +1562,11 @@ public class DatabaseManager {
             ps.setInt(3, normalizedAmount);
             ps.setLong(4, System.currentTimeMillis());
             ps.executeUpdate();
+            return true;
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save crate key balance for " + uuid + "/" + crateId, e);
+            return false;
         }
-
-        return normalizedAmount;
     }
 
     public int addCrateKeys(UUID uuid, String crateId, int amount) {
@@ -1573,8 +1574,12 @@ public class DatabaseManager {
             return getCrateKeyAmount(uuid, crateId);
         }
 
-        int newAmount = getCrateKeyAmount(uuid, crateId) + amount;
-        return setCrateKeyAmount(uuid, crateId, newAmount);
+        int current = getCrateKeyAmount(uuid, crateId);
+        int newAmount = current + amount;
+        if (setCrateKeyAmount(uuid, crateId, newAmount)) {
+            return newAmount;
+        }
+        return current;
     }
 
     public boolean removeCrateKeys(UUID uuid, String crateId, int amount) {
@@ -1587,8 +1592,7 @@ public class DatabaseManager {
             return false;
         }
 
-        setCrateKeyAmount(uuid, crateId, current - amount);
-        return true;
+        return setCrateKeyAmount(uuid, crateId, current - amount);
     }
 
     public record CrateBlockData(String world, int x, int y, int z, String crateId) {

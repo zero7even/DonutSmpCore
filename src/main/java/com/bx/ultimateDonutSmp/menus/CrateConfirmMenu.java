@@ -87,6 +87,20 @@ public class CrateConfirmMenu extends BaseMenu {
         player.closeInventory();
     }
 
+    @Override
+    public void onClose(Player player) {
+        plugin.getSpigotScheduler().runEntity(player, () -> {
+            if (!player.isOnline()) {
+                plugin.getCrateManager().clearSession(player.getUniqueId());
+                return;
+            }
+            org.bukkit.inventory.Inventory top = player.getOpenInventory().getTopInventory();
+            if (!(top.getHolder() instanceof BaseMenu)) {
+                plugin.getCrateManager().clearSession(player.getUniqueId());
+            }
+        });
+    }
+
     private ItemStack createSimpleItem(CrateManager.DisplayItem display, Player player) {
         ItemStack item = ItemUtils.createItem(
                 display.material(),

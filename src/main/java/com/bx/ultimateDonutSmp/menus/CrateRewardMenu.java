@@ -93,6 +93,20 @@ public class CrateRewardMenu extends BaseMenu {
         new CrateConfirmMenu(plugin, crate, session.selectedReward(), openContext).open(player);
     }
 
+    @Override
+    public void onClose(Player player) {
+        plugin.getSpigotScheduler().runEntity(player, () -> {
+            if (!player.isOnline()) {
+                plugin.getCrateManager().clearSession(player.getUniqueId());
+                return;
+            }
+            org.bukkit.inventory.Inventory top = player.getOpenInventory().getTopInventory();
+            if (!(top.getHolder() instanceof BaseMenu)) {
+                plugin.getCrateManager().clearSession(player.getUniqueId());
+            }
+        });
+    }
+
     public OpenContext openContext() {
         return openContext;
     }

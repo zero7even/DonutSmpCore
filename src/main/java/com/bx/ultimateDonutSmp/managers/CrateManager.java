@@ -383,9 +383,13 @@ public class CrateManager {
         if (uuid == null || crate == null) {
             return 0;
         }
-        int balance = plugin.getDatabaseManager().setCrateKeyAmount(uuid, crate.id(), amount);
-        cacheKeyBalance(uuid, crate.id(), balance);
-        return balance;
+        boolean success = plugin.getDatabaseManager().setCrateKeyAmount(uuid, crate.id(), amount);
+        if (success) {
+            cacheKeyBalance(uuid, crate.id(), amount);
+            return amount;
+        } else {
+            return getKeyBalance(uuid, crate.id());
+        }
     }
 
     public boolean takeKeys(UUID uuid, String crateId, int amount) {
@@ -434,6 +438,10 @@ public class CrateManager {
         if (!hasAccess(player, crate)) {
             return new OpenResult(false, FailureReason.NO_PERMISSION,
                     "&cyou do not have permission to open this crate.", crate);
+        }
+        if (activeSessions.containsKey(player.getUniqueId())) {
+            return new OpenResult(false, FailureReason.ALREADY_OPENING,
+                    "&cyou are already opening a crate.", crate);
         }
         if (crate.rewards().isEmpty()) {
             return new OpenResult(false, FailureReason.INVALID_CRATE,
@@ -1555,6 +1563,7 @@ public class CrateManager {
         CRATE_NOT_FOUND,
         CRATE_DISABLED,
         NO_PERMISSION,
+        ALREADY_OPENING,
         NO_KEYS,
         INVALID_CRATE,
         INVALID_REWARD,
