@@ -1799,6 +1799,12 @@ public class ConfigManager {
             return true;
         }
 
+        // Bot settings and item definitions are customized by server admins.
+        if (("orders.yml".equals(resourceName) || "auction-house.yml".equals(resourceName))
+                && (path.equals("BOTS") || path.startsWith("BOTS.") || path.equals("ITEMS") || path.startsWith("ITEMS."))) {
+            return true;
+        }
+
         // Network server entries can be expanded per deployment.
         return "network.yml".equals(resourceName)
                 && path.startsWith("NETWORK-STATUS.SERVERS.");
