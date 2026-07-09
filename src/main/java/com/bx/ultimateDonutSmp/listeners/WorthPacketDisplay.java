@@ -25,6 +25,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +37,8 @@ public class WorthPacketDisplay implements Listener {
     private final ProtocolManager protocolManager;
     private final Set<UUID> inPluginMenu = ConcurrentHashMap.newKeySet();
     private final Set<UUID> pendingRefresh = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> suppressed = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, org.bukkit.Material> suppressedMaterials = new ConcurrentHashMap<>();
+    private final Set<UUID> openInventories = ConcurrentHashMap.newKeySet();
 
     public WorthPacketDisplay(UltimateDonutSmp plugin) {
         this.plugin = plugin;
@@ -58,27 +60,29 @@ public class WorthPacketDisplay implements Listener {
                 if (inPluginMenu.contains(player.getUniqueId())) {
                     return; // menus render their own worth
                 }
-                if (suppressed.contains(player.getUniqueId())) {
-                    return; // holding an item, keep items plain so native drag/stack works
-                }
+                org.bukkit.Material suppressedMat = suppressedMaterials.get(player.getUniqueId());
                 if (!uds.getWorthManager().isWorthDisplayEnabledFor(player)) {
                     return;
                 }
 
                 PacketContainer packet = event.getPacket();
                 int windowId = readWindowId(packet);
-                // editing the held/offhand item replays the equip animation, so skip them
+                // editing the held/offhand item replays the equip animation, so skip them only when GUI is closed
                 int heldSlot = 36 + player.getInventory().getHeldItemSlot();
                 int offhandSlot = 45;
+                boolean skipHeld = !openInventories.contains(player.getUniqueId());
 
                 if (event.getPacketType() == PacketType.Play.Server.SET_SLOT) {
                     if (windowId == 0) {
                         int slot = readSlotIndex(packet);
-                        if (slot == heldSlot || slot == offhandSlot) {
+                        if (skipHeld && (slot == heldSlot || slot == offhandSlot)) {
                             return;
                         }
                     }
                     ItemStack item = packet.getItemModifier().read(0);
+                    if (item != null && item.getType() == suppressedMat) {
+                        return;
+                    }
                     ItemStack rendered = uds.getWorthManager().renderClientWorthDisplay(item);
                     if (rendered != item) {
                         packet.getItemModifier().write(0, rendered);
@@ -94,15 +98,21 @@ public class WorthPacketDisplay implements Listener {
                 boolean changed = false;
                 for (int i = 0; i < items.size(); i++) {
                     ItemStack item = items.get(i);
-                    if (windowId == 0 && (i == heldSlot || i == offhandSlot)) {
+                    if (windowId == 0 && skipHeld && (i == heldSlot || i == offhandSlot)) {
+                        updated.add(item);
+                        continue;
+                    }
+                    if (item != null && item.getType() == suppressedMat) {
                         updated.add(item);
                         continue;
                     }
                     ItemStack rendered = uds.getWorthManager().renderClientWorthDisplay(item);
                     if (rendered != item) {
                         changed = true;
+                        updated.add(rendered);
+                    } else {
+                        updated.add(item);
                     }
-                    updated.add(rendered);
                 }
                 if (changed) {
                     packet.getItemListModifier().write(0, updated);
@@ -130,6 +140,7 @@ public class WorthPacketDisplay implements Listener {
 
     @EventHandler
     public void onInventoryOpen(InventoryOpenEvent event) {
+        openInventories.add(event.getPlayer().getUniqueId());
         if (event.getInventory().getHolder() instanceof BaseMenu) {
             inPluginMenu.add(event.getPlayer().getUniqueId());
         }
@@ -139,25 +150,25 @@ public class WorthPacketDisplay implements Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
         inPluginMenu.remove(uuid);
-        suppressed.remove(uuid);
-        if (event.getPlayer() instanceof Player player) {
-            scheduleCursorEval(player);
-        }
+        suppressedMaterials.remove(uuid);
+        openInventories.remove(uuid);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        suppressed.remove(uuid);
+        suppressedMaterials.remove(uuid);
         inPluginMenu.remove(uuid);
+        openInventories.remove(uuid);
         plugin.getWorthManager().clearWorthDisplay(event.getPlayer());
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        suppressed.remove(uuid);
+        suppressedMaterials.remove(uuid);
         inPluginMenu.remove(uuid);
+        openInventories.remove(uuid);
         pendingRefresh.remove(uuid);
     }
 
@@ -193,10 +204,11 @@ public class WorthPacketDisplay implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        boolean involvesItem = (cursor != null && !cursor.getType().isAir())
-                || (current != null && !current.getType().isAir());
-        if (involvesItem) {
-            suppressed.add(player.getUniqueId());
+        openInventories.add(player.getUniqueId());
+        if (cursor != null && !cursor.getType().isAir()) {
+            suppressedMaterials.put(player.getUniqueId(), cursor.getType());
+        } else if (current != null && !current.getType().isAir()) {
+            suppressedMaterials.put(player.getUniqueId(), current.getType());
         }
         scheduleCursorEval(player);
     }
@@ -204,7 +216,10 @@ public class WorthPacketDisplay implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
-            suppressed.add(player.getUniqueId());
+            ItemStack oldCursor = event.getOldCursor();
+            if (oldCursor != null && !oldCursor.getType().isAir()) {
+                suppressedMaterials.put(player.getUniqueId(), oldCursor.getType());
+            }
             scheduleCursorEval(player);
         }
     }
@@ -224,16 +239,18 @@ public class WorthPacketDisplay implements Listener {
             UUID uuid = player.getUniqueId();
             pendingRefresh.remove(uuid);
             if (!player.isOnline() || player.getGameMode() == GameMode.CREATIVE) {
-                suppressed.remove(uuid);
+                suppressedMaterials.remove(uuid);
                 return;
             }
             ItemStack onCursor = player.getItemOnCursor();
             if (onCursor != null && !onCursor.getType().isAir()) {
-                suppressed.add(uuid);
+                suppressedMaterials.put(uuid, onCursor.getType());
             } else {
-                suppressed.remove(uuid);
+                suppressedMaterials.remove(uuid);
             }
-            player.updateInventory();
+            if (openInventories.contains(uuid)) {
+                player.updateInventory();
+            }
         }, 1L);
     }
 }
