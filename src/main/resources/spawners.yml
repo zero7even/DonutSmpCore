@@ -13,6 +13,9 @@ SETTINGS:
   MAX_STACK_PER_BLOCK: 100000 # Sets the allowed limit for this option.
   STORAGE_CAP_PER_LOOT_KEY: 1000000 # Configures the storage cap per loot key option.
   DROP_ON_BREAK_IF_INVENTORY_FULL: true # Configures the drop on break if inventory full option.
+  HOPPER_EXTRACTION:
+    ENABLED: false # If true, hoppers placed underneath spawners will pull items out of spawner storage.
+    AMOUNT_PER_CYCLE: 64 # The maximum amount of items per loot type to transfer to the hopper below per generation cycle.
 
 # UDS setup: Spawner anti-ESP behavior and visibility protections.
 ANTI_ESP:

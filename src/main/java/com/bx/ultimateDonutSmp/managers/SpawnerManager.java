@@ -23,11 +23,14 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.CreatureSpawner;
+import org.bukkit.block.Hopper;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -85,6 +88,8 @@ public class SpawnerManager {
     private long maxStackPerBlock;
     private long storageCapPerLootKey;
     private boolean dropOnBreakIfInventoryFull;
+    private boolean hopperExtractionEnabled;
+    private int hopperExtractionAmountPerCycle;
     private String storageTitle;
     private int storageSize;
     private int storageItemsPerPage;
@@ -116,6 +121,8 @@ public class SpawnerManager {
         maxStackPerBlock = Math.max(1L, config.getLong("SETTINGS.MAX_STACK_PER_BLOCK", 100_000L));
         storageCapPerLootKey = Math.max(1L, config.getLong("SETTINGS.STORAGE_CAP_PER_LOOT_KEY", 1_000_000L));
         dropOnBreakIfInventoryFull = config.getBoolean("SETTINGS.DROP_ON_BREAK_IF_INVENTORY_FULL", true);
+        hopperExtractionEnabled = config.getBoolean("SETTINGS.HOPPER_EXTRACTION.ENABLED", false);
+        hopperExtractionAmountPerCycle = Math.max(1, config.getInt("SETTINGS.HOPPER_EXTRACTION.AMOUNT_PER_CYCLE", 64));
         storageTitle = config.getString("GUI.STORAGE.TITLE", "&8{mob} ѕᴘᴀᴡɴᴇʀѕ - {page}/{max_page}");
         storageSize = normalizeSize(config.getInt("GUI.STORAGE.SIZE", 54));
         storageItemsPerPage = Math.max(9, Math.min(storageSize - 9, config.getInt("GUI.STORAGE.ITEMS_PER_PAGE", 45)));
@@ -942,6 +949,10 @@ public class SpawnerManager {
             return;
         }
 
+        if (hopperExtractionEnabled) {
+            tryHopperExtraction(instance, block);
+        }
+
         long elapsed = now - instance.getLastProcessedAt();
         if (elapsed < intervalMillis) {
             return;
@@ -984,6 +995,59 @@ public class SpawnerManager {
             plugin.getDatabaseManager().saveSpawner(instance);
         }
         if (changed) {
+            saveLoot(instance);
+        }
+    }
+
+    private void tryHopperExtraction(SpawnerInstance instance, Block block) {
+        Block blockBelow = block.getRelative(BlockFace.DOWN);
+        if (blockBelow.getType() != Material.HOPPER) {
+            return;
+        }
+
+        org.bukkit.block.BlockState state = blockBelow.getState();
+        if (!(state instanceof Hopper hopper)) {
+            return;
+        }
+
+        Inventory hopperInventory = hopper.getInventory();
+        boolean changed = false;
+
+        List<SpawnerLootEntry> entries = new ArrayList<>(instance.getStoredLootEntries());
+        for (SpawnerLootEntry entry : entries) {
+            long storedAmount = entry.getAmount();
+            if (storedAmount <= 0L) {
+                continue;
+            }
+
+            Material material = entry.getMaterial();
+            int maxStack = material.getMaxStackSize();
+            long amountToTransfer = Math.min(storedAmount, Math.min(maxStack, hopperExtractionAmountPerCycle));
+            if (amountToTransfer <= 0) {
+                continue;
+            }
+
+            ItemStack itemToAdd = new ItemStack(material, (int) amountToTransfer);
+            Map<Integer, ItemStack> remaining = hopperInventory.addItem(itemToAdd);
+            int addedAmount = itemToAdd.getAmount();
+            if (!remaining.isEmpty()) {
+                addedAmount -= remaining.get(0).getAmount();
+            }
+
+            if (addedAmount > 0) {
+                instance.removeStoredLoot(entry.getKey(), addedAmount);
+                changed = true;
+            }
+
+            if (hopperInventory.firstEmpty() == -1 && !remaining.isEmpty()) {
+                break;
+            }
+        }
+
+        if (changed) {
+            if (!isTemporarySpawner(instance)) {
+                plugin.getDatabaseManager().saveSpawner(instance);
+            }
             saveLoot(instance);
         }
     }
