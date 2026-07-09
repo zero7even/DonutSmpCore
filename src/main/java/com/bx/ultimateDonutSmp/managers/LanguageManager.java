@@ -60,6 +60,7 @@ public class LanguageManager {
 
     private final UltimateDonutSmp plugin;
     private final Map<String, YamlConfiguration> languages = new LinkedHashMap<>();
+    private final Map<String, YamlConfiguration> bundledLanguages = new HashMap<>();
     private final Map<FileConfiguration, Map<String, FileConfiguration>> localizedConfigurations =
             new IdentityHashMap<>();
     private final Set<String> warnedMissingKeys = new HashSet<>();
@@ -77,6 +78,11 @@ public class LanguageManager {
         languages.clear();
         localizedConfigurations.clear();
         warnedMissingKeys.clear();
+        bundledLanguages.clear();
+
+        for (String locale : BUNDLED_LOCALES) {
+            bundledLanguages.put(locale.toLowerCase(Locale.ROOT), loadBundledLanguage(locale));
+        }
 
         YamlConfiguration englishDefaults = loadBundledLanguage(DEFAULT_LOCALE);
         mergeCurrentPlayerText(englishDefaults);
@@ -298,9 +304,9 @@ public class LanguageManager {
                 localized.set(key, copyValue(legacyConfiguration.get(key)));
             }
         }
-        applyLanguageSection(localized, languages.get(fallbackLocale), rootPath);
+        applyLanguageSection(localized, languages.get(fallbackLocale), fallbackLocale, rootPath);
         if (!activeLocale.equals(fallbackLocale)) {
-            applyLanguageSection(localized, languages.get(activeLocale), rootPath);
+            applyLanguageSection(localized, languages.get(activeLocale), activeLocale, rootPath);
         }
         return localized;
     }
@@ -308,6 +314,7 @@ public class LanguageManager {
     private void applyLanguageSection(
             YamlConfiguration target,
             YamlConfiguration language,
+            String locale,
             String rootPath
     ) {
         if (language == null) {
@@ -317,12 +324,23 @@ public class LanguageManager {
         if (section == null) {
             return;
         }
+        YamlConfiguration bundled = bundledLanguages.get(locale.toLowerCase(Locale.ROOT));
+        ConfigurationSection bundledSection = bundled != null ? bundled.getConfigurationSection(rootPath) : null;
+
         for (String key : section.getKeys(true)) {
             if (section.isConfigurationSection(key)) {
                 continue;
             }
             Object value = section.get(key);
             if (value instanceof String || isStringList(value)) {
+                if (target.contains(key)) {
+                    if (bundledSection != null && bundledSection.contains(key)) {
+                        Object bundledValue = bundledSection.get(key);
+                        if (value.equals(bundledValue)) {
+                            continue;
+                        }
+                    }
+                }
                 target.set(key, copyValue(value));
             }
         }
