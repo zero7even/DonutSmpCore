@@ -13,6 +13,7 @@ SPAWN:
 # UDS setup: Sell command and sell menu sounds.
 SELL:
   LEVEL-UP: "minecraft:entity.player.levelup|1.0|2.0" # Sets the sound played for this event.
+  SUCCESS: "minecraft:entity.experience_orb.pickup|1.0|1.0" # Sets the sound played for this event.
 
 # UDS setup: Amethyst tool sounds.
 AMETHYST:
