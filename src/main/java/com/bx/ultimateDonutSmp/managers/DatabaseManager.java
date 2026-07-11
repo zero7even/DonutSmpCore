@@ -1320,8 +1320,8 @@ public class DatabaseManager {
                  public_chat_enabled, server_broadcasts_enabled, auction_notifications_enabled,
                  explosion_particles_enabled, hide_all_players_enabled, notification_sounds_enabled,
                  rtp_coordinates_enabled, order_notifications_enabled, team_chat_visible,
-                 duel_music_enabled, quiet_spawn_enabled, night_vision_enabled, keyall_remaining_seconds,
-                 shard_booster_expiry)
+                   duel_music_enabled, quiet_spawn_enabled, night_vision_enabled, keyall_remaining_seconds,
+                   shard_booster_expiry)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """)) {
             ps.setString(1, data.getUuid().toString());

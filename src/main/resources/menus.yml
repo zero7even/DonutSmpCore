@@ -773,6 +773,7 @@ SETTINGS-MENU:
       SLOT: 46
       LORE: ["&7ѕᴛᴀᴛᴜѕ: {status}", "&8ʜɪᴅᴇ ѕᴘᴀᴡɴ ᴄᴏᴜɴᴛᴅᴏᴡɴ ᴀɴᴅ ѕᴜᴄᴄᴇѕѕ ꜰᴇᴇᴅʙᴀᴄᴋ."]
 
+
 SETTINGS-MENU-LEGACY:
   TITLE: "&8ѕᴇᴛᴛɪɴɢѕ" # Sets the title text shown for this menu or prompt.
   SIZE: 54 # Sets the inventory size in slots.
@@ -1111,6 +1112,12 @@ SELL-MENU:
   TITLE: "&8ᴘʟᴀᴄᴇ ɪᴛᴇᴍѕ ɪɴ ʜᴇʀᴇ ᴛᴏ ѕᴇʟʟ" # Sets the title text shown for this menu or prompt.
   MULTIPLIER-TITLE: "&8ѕᴇʟʟ ᴍᴜʟᴛɪᴘʟɪᴇʀѕ" # Sets the title text shown for this menu or prompt.
   AUTO-SELL: true # Configures the auto sell option.
+  MODE: "instant"  # Configure "instant" or "confirm" for the sell mode
+  CONFIRM-BUTTON:
+    MATERIAL: "LIME_STAINED_GLASS_PANE"
+    TITLE: "&a&lᴄᴏɴꜰɪʀᴍ ѕᴇʟʟ"
+    LORE:
+      - "&7ᴄʟɪᴄᴋ ᴛᴏ ѕᴇʟʟ ᴀʟʟ ɪᴛᴇᴍѕ ɪɴ ᴛʜᴇ ᴍᴇɴᴜ."
   CROPS-BUTTON:
     MATERIAL: "WHEAT" # Sets the Bukkit material used here.
     TITLE: "&#6BF18Dᴄʀᴏᴘѕ" # Sets the title text shown for this menu or prompt.
