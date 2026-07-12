@@ -2,6 +2,8 @@ package com.bx.ultimateDonutSmp;
 
 import com.bx.ultimateDonutSmp.amethyst.*;
 import com.bx.ultimateDonutSmp.api.EconomyExpansion;
+import com.bx.ultimateDonutSmp.api.EconomyLeaderboardExpansion;
+import com.bx.ultimateDonutSmp.api.EconomyRankExpansion;
 import com.bx.ultimateDonutSmp.api.HideExpansion;
 import com.bx.ultimateDonutSmp.commands.*;
 import com.bx.ultimateDonutSmp.hooks.VaultEconomyHook;
@@ -275,6 +277,8 @@ public final class UltimateDonutSmp extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new EconomyExpansion(this).register();
             new HideExpansion(this).register();
+            new EconomyLeaderboardExpansion(this).register();
+            new EconomyRankExpansion(this).register();
             getLogger().info("PlaceholderAPI expansion registered.");
         }
 
@@ -456,6 +460,7 @@ public final class UltimateDonutSmp extends JavaPlugin {
 
     private void registerListeners() {
         PluginManager pm = getServer().getPluginManager();
+        pm.registerEvents(new PlayerContextListener(this), this);
         pm.registerEvents(new PlayerJoinQuitListener(this), this);
         pm.registerEvents(new PlayerDeathListener(this), this);
         pm.registerEvents(new ChatListener(this), this);

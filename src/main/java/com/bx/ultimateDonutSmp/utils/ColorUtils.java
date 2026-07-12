@@ -48,7 +48,19 @@ public class ColorUtils {
             return "";
         }
 
-        return applyColors(LanguageManager.translateBuiltInText(text));
+        Player target = PlayerContext.get();
+        if (target != null) {
+            return colorize(text, target);
+        }
+
+        String result = LanguageManager.translateBuiltInText(text);
+        if (hasPAPI) {
+            try {
+                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders((Player) null, result);
+            } catch (Exception ignored) {
+            }
+        }
+        return applyColors(result);
     }
 
     private static String applyColors(String text) {

@@ -463,7 +463,7 @@ public class CrateVisualManager {
 
         String text = getKeyLine(crate, plugin.getCrateManager().getKeyBalance(player, crate.id()));
         if (!text.equals(playerDisplayTexts.get(key))) {
-            display.setText(com.bx.ultimateDonutSmp.utils.ColorUtils.toComponent(text));
+            display.setText(com.bx.ultimateDonutSmp.utils.ColorUtils.toComponent(text, player));
             playerDisplayTexts.put(key, text);
         }
         if (shouldShowToOwner) {
