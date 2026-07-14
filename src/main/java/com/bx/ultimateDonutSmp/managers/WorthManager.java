@@ -781,17 +781,91 @@ public class WorthManager {
 
         FileConfiguration worthConfig = plugin.getConfigManager().getWorth();
         ConfigurationSection typedValues = worthConfig.getConfigurationSection("TYPE");
+        DirectWorthData resolved = null;
         if (typedValues != null) {
             for (String categoryKey : typedValues.getKeys(false)) {
                 ConfigurationSection categorySection = typedValues.getConfigurationSection(categoryKey);
                 DirectWorthData typedWorth = findWorthRecursively(categorySection, item, categoryKey);
                 if (typedWorth != null) {
-                    return typedWorth;
+                    resolved = typedWorth;
+                    break;
                 }
             }
         }
 
-        return findWorthRecursively(worthConfig, item, "");
+        if (resolved == null) {
+            resolved = findWorthRecursively(worthConfig, item, "");
+        }
+
+        return addEnchantmentWorthIfApplicable(item, resolved);
+    }
+
+    private DirectWorthData addEnchantmentWorthIfApplicable(ItemStack item, DirectWorthData baseData) {
+        if (baseData == null || item == null) {
+            return baseData;
+        }
+
+        if (item.getType() == Material.ENCHANTED_BOOK) {
+            return baseData;
+        }
+
+        java.util.Map<Enchantment, Integer> enchantments = item.getEnchantments();
+        if (enchantments.isEmpty()) {
+            return baseData;
+        }
+
+        double extraWorth = 0;
+        for (java.util.Map.Entry<Enchantment, Integer> entry : enchantments.entrySet()) {
+            extraWorth += getEnchantmentWorth(entry.getKey(), entry.getValue());
+        }
+
+        if (extraWorth > 0) {
+            return new DirectWorthData(
+                    baseData.worth() + extraWorth,
+                    baseData.sourceKey(),
+                    baseData.categoryKey(),
+                    baseData.resolutionType() + "_ENCHANTED"
+            );
+        }
+
+        return baseData;
+    }
+
+    private double getEnchantmentWorth(Enchantment enchantment, int level) {
+        String enchantmentKey = enchantment.getKey().getKey()
+                .toUpperCase(Locale.US)
+                .replace('-', '_');
+        String lookupKey = "ENCHANTED_BOOK:" + enchantmentKey + ":" + level;
+
+        FileConfiguration worthConfig = plugin.getConfigManager().getWorth();
+        if (worthConfig == null) {
+            return 0;
+        }
+
+        double direct = worthConfig.getDouble("TYPE.BOOK." + lookupKey, -1);
+        if (direct >= 0) {
+            return direct;
+        }
+
+        return findEnchantmentWorthRecursively(worthConfig, lookupKey);
+    }
+
+    private double findEnchantmentWorthRecursively(ConfigurationSection section, String lookupKey) {
+        if (section == null) {
+            return 0;
+        }
+        if (section.contains(lookupKey) && !section.isConfigurationSection(lookupKey)) {
+            return section.getDouble(lookupKey, 0);
+        }
+        for (String key : section.getKeys(false)) {
+            if (section.isConfigurationSection(key)) {
+                double worth = findEnchantmentWorthRecursively(section.getConfigurationSection(key), lookupKey);
+                if (worth > 0) {
+                    return worth;
+                }
+            }
+        }
+        return 0;
     }
 
     private DirectWorthData findWorthRecursively(ConfigurationSection section, ItemStack item, String categoryKey) {
