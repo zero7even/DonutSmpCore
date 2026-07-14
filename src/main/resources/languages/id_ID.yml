@@ -1181,6 +1181,22 @@ MENUS:
         - "&7CLICK TO CANCEL"
     PLAYER-BUTTON:
       TITLE: '&#00FC00{player}'
+  SELLALL-CONFIRM-MENU:
+    TITLE: "&8Konfirmasi Jual Semua"
+    CONFIRM-BUTTON:
+      TITLE: "&#00FC00Konfirmasi"
+      LORE:
+        - "&7KLIK UNTUK KONFIRMASI JUAL SEMUA"
+        - "&7BARANG DI INVENTARIS ANDA."
+    CANCEL-BUTTON:
+      TITLE: "&#FC0000Batal"
+      LORE:
+        - "&7KLIK UNTUK MEMBATALKAN"
+    INFO-BUTTON:
+      TITLE: "&#E69F00Jual Semua Barang"
+      LORE:
+        - "&7Ini akan menjual semua barang"
+        - "&7yang dapat dijual di inventaris Anda."
   AFK-MENU:
     TITLE: "&8AFK Areas"
     RANDOM-BUTTON:

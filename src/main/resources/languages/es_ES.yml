@@ -1044,6 +1044,22 @@ MENUS:
         - "&7CLICK TO CANCEL"
     PLAYER-BUTTON:
       TITLE: '&#00FC00{player}'
+  SELLALL-CONFIRM-MENU:
+    TITLE: '&8Confirm Sell All'
+    CONFIRM-BUTTON:
+      TITLE: '&#00FC00Confirm'
+      LORE:
+      - '&7CLICK TO CONFIRM TO SELL ALL'
+      - '&7SELLABLE ITEMS IN YOUR INVENTORY.'
+    CANCEL-BUTTON:
+      TITLE: '&#FC0000Cancel'
+      LORE:
+      - '&7CLICK TO CANCEL'
+    INFO-BUTTON:
+      TITLE: '&#E69F00Sell All Items'
+      LORE:
+      - '&7This will sell all sellable'
+      - '&7items in your inventory.'
   AFK-MENU:
     TITLE: "&8AFK Areas"
     RANDOM-BUTTON:
