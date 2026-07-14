@@ -250,8 +250,23 @@ class WorthManagerTest {
         }
 
         @Override
-        public String translationKey() {
+        public String getTranslationKey() {
             return key.getKey();
+        }
+
+        @Override
+        public boolean isRegistered() {
+            return false;
+        }
+
+        @Override
+        public org.bukkit.NamespacedKey getKeyOrNull() {
+            return key;
+        }
+
+        @Override
+        public org.bukkit.NamespacedKey getKeyOrThrow() {
+            return key;
         }
     }
 }
