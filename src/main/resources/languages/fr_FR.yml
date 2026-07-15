@@ -1530,45 +1530,48 @@ CONFIG:
           - "&7COME BACK AFTER THE NEXT REFRESH."
   RTP:
     MESSAGES:
-      DISABLED: "&cRTP IS CURRENTLY DISABLED."
-      COOLDOWN: "&cYOU CAN'T RTP FOR ANOTHER {remaining}S."
-      MAX-PLAYERS: "&cTOO MANY PLAYERS ARE USING RTP RIGHT NOW. PLEASE TRY AGAIN LATER."
-      WORLD-NOT-EXIST: "&cTHE WORLD DOES NOT EXIST."
-      SEARCHING: "&aSEARCHING FOR A SAFE LOCATION IN {world}..."
-      TP-WARNING: "&eDO NOT MOVE FOR &b{countdown}&e SECONDS OR THE TELEPORT WILL BE CANCELED."
-      SEARCH-ACTIONBAR: "&7SEARCHING {world}... &b{elapsed}S"
-      SEARCH-FOUND-ACTIONBAR: "&aSAFE LOCATION FOUND IN {world} ! &7PREPARING TELEPORT..."
-      SAFE-LOCATION-FOUND: "&aSAFE LOCATION FOUND AT : X:{X} Y:{y} Z:{z}"
-      MAX-ATTEMPTS: "&cIMPOSSIBLE DE TROUVER UN EMPLACEMENT RTP SéCURISé. &7TENTATIVES : &f{attempts}/{maX_attempts} &8| &7ÉCHANTILLONS : &f{samples}/{maX_samples}"
-      DESTINATION-DISABLED: "&cTHIS RTP DESTINATION IS CURRENTLY DISABLED."
-      UNSAFE-LOCATION: "&cTHE LOCATION AT X:{X} Y:{y} Z:{z} WAS REJECTED : {reason}"
+      DISABLED: "&cRTP DÉSACTIVÉ POUR CETTE DESTINATION."
+      PLAYTIME-REQUIRED: "&cVous avez besoin d'au moins {required} heures de jeu pour RTP vers {world}. &7(Actuel: {current}h)"
+      COOLDOWN: "&cVEUILLEZ ATTENDRE {remaining}S AVANT LE PROCHAIN RTP."
+      MAX-PLAYERS: "&cTROP DE JOUEURS UTILISENT LE RTP. VEUILLEZ RÉESSAYER PLUS TARD."
+      WORLD-NOT-EXIST: "&cCE MONDE N'EXISTE PAS."
+      SEARCHING: "&aRECHERCHE D'UN EMPLACEMENT SÛR DANS {world}..."
+      TP-WARNING: "&eNE BOUGEZ PAS PENDANT &b{countdown}&e SECONDES OU LE TÉLÉPORT SERA ANNULÉ."
+      SEARCH-ACTIONBAR: "&7RECHERCHE {world}... &b{elapsed}S"
+      SEARCH-FOUND-ACTIONBAR: "&aEMPLACEMENT SÛR TROUVÉ DANS {world} ! &7PRÉPARATION DU TÉLÉPORT..."
+      SAFE-LOCATION-FOUND: "&aEMPLACEMENT SÛR TROUVÉ À : X:{X} Y:{y} Z:{z}"
+      MAX-ATTEMPTS: "&cIMPOSSIBLE DE TROUVER UN EMPLACEMENT RTP SÉCURISÉ. &7TENTATIVES : &f{attempts}/{maX_attempts} &8| &7ÉCHANTILLONS : &f{samples}/{maX_samples}"
+      DESTINATION-DISABLED: "&cRTP DÉSACTIVÉ POUR CETTE DESTINATION."
+      UNSAFE-LOCATION: "&cEMPLACEMENT REJETÉ À X:{X} Y:{y} Z:{z} : {reason}"
     RTP-MENU:
-      TITLE: "&8RTP Menu"
+      TITLE: "&8Menu RTP"
       BUTTONS:
         OVERWORLD:
-          DISPLAY-NAME: "&#4B72FFOverworld"
+          DISPLAY-NAME: "&#4B72FFMonde Normal"
           LORE:
-            - "&fCLICK TO RANDOMLY TELEPORT"
+            - "&fCLIQUEZ POUR TÉLÉPORTER ALÉATOIREMENT"
             - ''
-            - "&7PLAYERS : &b{players}"
-            - "&7RANGE : &b{min_radius}-{maX_radius}"
-            - "&7COOLDOWN : &b{cooldown}S"
+            - "&7JOUEURS : &b{players}"
+            - "&7PORTÉE : &b{min_radius}-{maX_radius}"
+            - "&7RECHARGE : &b{cooldown}S"
         NETHER:
           DISPLAY-NAME: "&#FF6B3DNether"
           LORE:
-            - "&fCLICK TO RANDOMLY TELEPORT"
+            - "&fCLIQUEZ POUR TÉLÉPORTER ALÉATOIREMENT"
             - ''
-            - "&7PLAYERS : &b{players}"
-            - "&7RANGE : &b{min_radius}-{maX_radius}"
-            - "&7COOLDOWN : &b{cooldown}S"
+            - "&7JOUEURS : &b{players}"
+            - "&7PORTÉE : &b{min_radius}-{maX_radius}"
+            - "&7RECHARGE : &b{cooldown}S"
+            - "&7Temps de jeu requis : &b{required_playtime}"
         THE_END:
           DISPLAY-NAME: "&#F3E38AThe End"
           LORE:
-            - "&fCLICK TO RANDOMLY TELEPORT"
+            - "&fCLIQUEZ POUR TÉLÉPORTER ALÉATOIREMENT"
             - ''
-            - "&7PLAYERS : &b{players}"
-            - "&7RANGE : &b{min_radius}-{maX_radius}"
-            - "&7COOLDOWN : &b{cooldown}S"
+            - "&7JOUEURS : &b{players}"
+            - "&7PORTÉE : &b{min_radius}-{maX_radius}"
+            - "&7RECHARGE : &b{cooldown}S"
+            - "&7Temps de jeu requis : &b{required_playtime}"
   AMETHYST_TOOLS:
     AMETHYST-TOOLS:
       DRILL:

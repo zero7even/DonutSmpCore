@@ -70,6 +70,8 @@ public class PlayerData {
     private boolean followAlertsEnabled;
     private boolean explosionSoundsEnabled;
     private boolean displayDonutPlusEnabled;
+    private long mobSpawnDisabledUntil;
+    private long phantomDisabledUntil;
 
     public PlayerData(UUID uuid, String username) {
         this.uuid = uuid;
@@ -138,6 +140,8 @@ public class PlayerData {
         this.followAlertsEnabled = true;
         this.explosionSoundsEnabled = true;
         this.displayDonutPlusEnabled = true;
+        this.mobSpawnDisabledUntil = 0L;
+        this.phantomDisabledUntil = 0L;
     }
 
     public UUID getUuid() {
@@ -378,11 +382,27 @@ public class PlayerData {
     }
 
     public boolean isPhantomEnabled() {
+        if (!phantomEnabled) {
+            if (phantomDisabledUntil > 0 && System.currentTimeMillis() > phantomDisabledUntil) {
+                phantomEnabled = true;
+                phantomDisabledUntil = 0L;
+                dirty = true;
+            }
+        }
         return phantomEnabled;
     }
 
     public void setPhantomEnabled(boolean phantomEnabled) {
         this.phantomEnabled = phantomEnabled;
+        dirty = true;
+    }
+
+    public long getPhantomDisabledUntil() {
+        return phantomDisabledUntil;
+    }
+
+    public void setPhantomDisabledUntil(long phantomDisabledUntil) {
+        this.phantomDisabledUntil = phantomDisabledUntil;
         dirty = true;
     }
 
@@ -540,11 +560,27 @@ public class PlayerData {
     }
 
     public boolean isMobSpawnEnabled() {
+        if (!mobSpawnEnabled) {
+            if (mobSpawnDisabledUntil > 0 && System.currentTimeMillis() > mobSpawnDisabledUntil) {
+                mobSpawnEnabled = true;
+                mobSpawnDisabledUntil = 0L;
+                dirty = true;
+            }
+        }
         return mobSpawnEnabled;
     }
 
     public void setMobSpawnEnabled(boolean mobSpawnEnabled) {
         this.mobSpawnEnabled = mobSpawnEnabled;
+        dirty = true;
+    }
+
+    public long getMobSpawnDisabledUntil() {
+        return mobSpawnDisabledUntil;
+    }
+
+    public void setMobSpawnDisabledUntil(long mobSpawnDisabledUntil) {
+        this.mobSpawnDisabledUntil = mobSpawnDisabledUntil;
         dirty = true;
     }
 

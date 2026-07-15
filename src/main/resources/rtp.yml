@@ -29,6 +29,8 @@ MESSAGES:
   MAX-ATTEMPTS: '&cCould not find a safe location after %attempts% attempts.'
   # The text or value for Destination Disabled. Available options: Any valid string text
   DESTINATION-DISABLED: '&cThis RTP destination is currently disabled.'
+  # The text or value for Playtime Required. Available options: Any valid string text
+  PLAYTIME-REQUIRED: '&cYou need at least {required} hours of playtime to RTP to {world}. &7(Current: {current}h)'
   # The text or value for Unsafe Location. Available options: Any valid string text
   UNSAFE-LOCATION: '&cThe location at X:{x} Y:{y} Z:{z} was rejected: {reason}'
   # The text or value for Safe Location Found Hidden. Available options: Any valid string text
@@ -64,6 +66,8 @@ WORLD-SETTINGS:
     CENTER-Z: 0
     # The numerical value for Cooldown. Available options: Any valid integer
     COOLDOWN: 30
+    # The required playtime in hours to RTP to Nether. Set to 0 for no limit. Available options: Any decimal number
+    REQUIRED-PLAYTIME-HOURS: 5.0
   # Configuration section for World The End.
   world_the_end:
     # The numerical value for Max Radius. Available options: Any valid integer
@@ -76,6 +80,8 @@ WORLD-SETTINGS:
     CENTER-Z: 0
     # The numerical value for Cooldown. Available options: Any valid integer
     COOLDOWN: 30
+    # The required playtime in hours to RTP to The End. Set to 0 for no limit. Available options: Any decimal number
+    REQUIRED-PLAYTIME-HOURS: 10.0
 # Configuration section for Rtp Menu.
 RTP-MENU:
   TITLE: '&8RTP Menu'
@@ -114,6 +120,7 @@ RTP-MENU:
       - '&7Players: &b{players}'
       - '&7Range: &b{min_radius}-{max_radius}'
       - '&7Cooldown: &b{cooldown}s'
+      - '&7Required Playtime: &b{required_playtime}'
     # Configuration section for The End.
     THE_END:
       DISPLAY-NAME: '&#F3E38AThe End'
@@ -129,5 +136,6 @@ RTP-MENU:
       - '&7Players: &b{players}'
       - '&7Range: &b{min_radius}-{max_radius}'
       - '&7Cooldown: &b{cooldown}s'
+      - '&7Required Playtime: &b{required_playtime}'
 # The numerical value for Default Title Fadeout. Available options: Any valid integer
 DEFAULT-TITLE-FADEOUT: 10

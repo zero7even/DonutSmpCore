@@ -283,6 +283,8 @@ public class DatabaseManager {
               "  night_vision_enabled INTEGER DEFAULT 0," +
               "  keyall_remaining_seconds INTEGER DEFAULT -1," +
               "  shard_booster_expiry INTEGER DEFAULT 0," +
+              "  mob_spawn_disabled_until BIGINT DEFAULT 0," +
+              "  phantom_disabled_until BIGINT DEFAULT 0," +
               "  destroy_pearl_on_death INTEGER DEFAULT 1," +
               "  randomized_coords INTEGER DEFAULT 0," +
               "  death_messages_choice INTEGER DEFAULT 1," +
@@ -638,6 +640,8 @@ public class DatabaseManager {
         ensureColumnExists("players", "night_vision_enabled", "INTEGER DEFAULT 0");
         ensureColumnExists("players", "keyall_remaining_seconds", "INTEGER DEFAULT -1");
         ensureColumnExists("players", "shard_booster_expiry", "INTEGER DEFAULT 0");
+        ensureColumnExists("players", "mob_spawn_disabled_until", "BIGINT DEFAULT 0");
+        ensureColumnExists("players", "phantom_disabled_until", "BIGINT DEFAULT 0");
         ensureColumnExists("players", "destroy_pearl_on_death", "INTEGER DEFAULT 1");
         ensureColumnExists("players", "randomized_coords", "INTEGER DEFAULT 0");
         ensureColumnExists("players", "death_messages_choice", "INTEGER DEFAULT 1");
@@ -922,6 +926,8 @@ public class DatabaseManager {
         data.setNightVisionEnabled(rs.getInt("night_vision_enabled") != 0);
         data.setKeyAllRemainingSeconds(rs.getLong("keyall_remaining_seconds"));
         data.setShardBoosterExpiryMillis(rs.getLong("shard_booster_expiry"));
+        data.setMobSpawnDisabledUntil(rs.getLong("mob_spawn_disabled_until"));
+        data.setPhantomDisabledUntil(rs.getLong("phantom_disabled_until"));
         data.setDestroyPearlOnDeath(rs.getInt("destroy_pearl_on_death") != 0);
         data.setRandomizedCoords(rs.getInt("randomized_coords") != 0);
         data.setDeathMessagesChoice(com.bx.ultimateDonutSmp.models.TwoChoice.fromInt(rs.getInt("death_messages_choice")));
@@ -1347,11 +1353,11 @@ public class DatabaseManager {
                  public_chat_enabled, server_broadcasts_enabled, auction_notifications_enabled,
                  explosion_particles_enabled, hide_all_players_enabled, notification_sounds_enabled,
                  rtp_coordinates_enabled, order_notifications_enabled, team_chat_visible,
-                   duel_music_enabled, quiet_spawn_enabled, night_vision_enabled, keyall_remaining_seconds,
-                   shard_booster_expiry, destroy_pearl_on_death, randomized_coords, death_messages_choice,
-                   advancement_messages_choice, join_leave_messages_choice, teleport_alerts_enabled,
-                   follow_alerts_enabled, explosion_sounds_enabled, display_donutplus_enabled)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    duel_music_enabled, quiet_spawn_enabled, night_vision_enabled, keyall_remaining_seconds,
+                    shard_booster_expiry, mob_spawn_disabled_until, phantom_disabled_until, destroy_pearl_on_death, randomized_coords, death_messages_choice,
+                    advancement_messages_choice, join_leave_messages_choice, teleport_alerts_enabled,
+                    follow_alerts_enabled, explosion_sounds_enabled, display_donutplus_enabled)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """)) {
             ps.setString(1, data.getUuid().toString());
             ps.setString(2, data.getUsername());
@@ -1405,15 +1411,17 @@ public class DatabaseManager {
             ps.setInt(50, data.isNightVisionEnabled() ? 1 : 0);
             ps.setLong(51, data.getKeyAllRemainingSeconds());
             ps.setLong(52, data.getShardBoosterExpiryMillis());
-            ps.setInt(53, data.isDestroyPearlOnDeath() ? 1 : 0);
-            ps.setInt(54, data.isRandomizedCoords() ? 1 : 0);
-            ps.setInt(55, data.getDeathMessagesChoice().ordinal());
-            ps.setInt(56, data.getAdvancementMessagesChoice().ordinal());
-            ps.setInt(57, data.getJoinLeaveMessagesChoice().ordinal());
-            ps.setInt(58, data.isTeleportAlertsEnabled() ? 1 : 0);
-            ps.setInt(59, data.isFollowAlertsEnabled() ? 1 : 0);
-            ps.setInt(60, data.isExplosionSoundsEnabled() ? 1 : 0);
-            ps.setInt(61, data.isDisplayDonutPlusEnabled() ? 1 : 0);
+            ps.setLong(53, data.getMobSpawnDisabledUntil());
+            ps.setLong(54, data.getPhantomDisabledUntil());
+            ps.setInt(55, data.isDestroyPearlOnDeath() ? 1 : 0);
+            ps.setInt(56, data.isRandomizedCoords() ? 1 : 0);
+            ps.setInt(57, data.getDeathMessagesChoice().ordinal());
+            ps.setInt(58, data.getAdvancementMessagesChoice().ordinal());
+            ps.setInt(59, data.getJoinLeaveMessagesChoice().ordinal());
+            ps.setInt(60, data.isTeleportAlertsEnabled() ? 1 : 0);
+            ps.setInt(61, data.isFollowAlertsEnabled() ? 1 : 0);
+            ps.setInt(62, data.isExplosionSoundsEnabled() ? 1 : 0);
+            ps.setInt(63, data.isDisplayDonutPlusEnabled() ? 1 : 0);
             ps.executeUpdate();
             data.setDirty(false);
         } catch (SQLException e) {
@@ -3324,7 +3332,9 @@ public class DatabaseManager {
                             money_spent = 0,
                             money_made = 0,
                             keyall_remaining_seconds = -1,
-                            shard_booster_expiry = 0
+                            shard_booster_expiry = 0,
+                            mob_spawn_disabled_until = 0,
+                            phantom_disabled_until = 0
                         """)) {
                     statement.setDouble(1, Math.max(0D, startingMoney));
                     affected.put("players", statement.executeUpdate());

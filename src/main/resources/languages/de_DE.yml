@@ -1666,6 +1666,7 @@ CONFIG:
   RTP:
     MESSAGES:
       DISABLED: "&cRTP IS CURRENTLY DISABLED."
+      PLAYTIME-REQUIRED: "&cDu benötigst mindestens {required} Stunden Spielzeit, um nach {world} zu RTPen. &7(Aktuell: {current}h)"
       COOLDOWN: "&cYOU CAN'T RTP FOR ANOTHER {remaining}S."
       MAX-PLAYERS: "&cTOO MANY PLAYERS ARE USING RTP RIGHT NOW. PLEASE TRY AGAIN LATER."
       WORLD-NOT-EXIST: "&cTHE WORLD DOES NOT EXIST."
@@ -1696,6 +1697,7 @@ CONFIG:
             - "&7PLAYERS: &b{players}"
             - "&7RANGE: &b{min_radius}-{maX_radius}"
             - "&7COOLDOWN: &b{cooldown}S"
+            - "&7Benötigte Spielzeit: &b{required_playtime}"
         THE_END:
           DISPLAY-NAME: "&#F3E38AThe End"
           LORE:
@@ -1704,6 +1706,7 @@ CONFIG:
             - "&7PLAYERS: &b{players}"
             - "&7RANGE: &b{min_radius}-{maX_radius}"
             - "&7COOLDOWN: &b{cooldown}S"
+            - "&7Benötigte Spielzeit: &b{required_playtime}"
   AMETHYST_TOOLS:
     AMETHYST-TOOLS:
       DRILL:

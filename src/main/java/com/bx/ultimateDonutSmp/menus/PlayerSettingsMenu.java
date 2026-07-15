@@ -133,6 +133,14 @@ public final class PlayerSettingsMenu extends BaseMenu {
                 data.setMobSpawnEnabled(!data.isMobSpawnEnabled());
                 if (!data.isMobSpawnEnabled()) {
                     clearNearbyHostileMobs(player);
+                    long limitSeconds = plugin.getConfigManager().getConfig().getLong("SETTINGS.DISABLE-MOB-SPAWN-LIMIT-SECONDS", -1L);
+                    if (limitSeconds > 0) {
+                        data.setMobSpawnDisabledUntil(System.currentTimeMillis() + (limitSeconds * 1000L));
+                    } else {
+                        data.setMobSpawnDisabledUntil(0L);
+                    }
+                } else {
+                    data.setMobSpawnDisabledUntil(0L);
                 }
                 sendToggleMessage(player, "Nearby Mob Spawn Prevention", !data.isMobSpawnEnabled());
             }
@@ -204,6 +212,16 @@ public final class PlayerSettingsMenu extends BaseMenu {
             }
             case "DISABLE_PHANTOM_SPAWN" -> {
                 data.setPhantomEnabled(!data.isPhantomEnabled());
+                if (!data.isPhantomEnabled()) {
+                    long limitSeconds = plugin.getConfigManager().getConfig().getLong("SETTINGS.DISABLE-PHANTOM-SPAWN-LIMIT-SECONDS", -1L);
+                    if (limitSeconds > 0) {
+                        data.setPhantomDisabledUntil(System.currentTimeMillis() + (limitSeconds * 1000L));
+                    } else {
+                        data.setPhantomDisabledUntil(0L);
+                    }
+                } else {
+                    data.setPhantomDisabledUntil(0L);
+                }
                 sendToggleMessage(player, "Phantom Spawn Prevention", !data.isPhantomEnabled());
             }
             case "PAY_CONFIRM_MENUS" -> toggle(player, "Pay Confirmation Menus",
@@ -299,7 +317,16 @@ public final class PlayerSettingsMenu extends BaseMenu {
             case "QUICK_AUCTION_PURCHASE" -> quickBuyState(player);
             case "QUICK_AUCTION_SELL" -> quickSellState(player);
             case "CHAINMAIL_ON_RESPAWN" -> state(data.isChainmailOnRespawnEnabled());
-            case "DISABLE_MOB_SPAWN" -> state(!data.isMobSpawnEnabled());
+            case "DISABLE_MOB_SPAWN" -> {
+                boolean disabled = !data.isMobSpawnEnabled();
+                if (disabled && data.getMobSpawnDisabledUntil() > 0) {
+                    long remainingSecs = (data.getMobSpawnDisabledUntil() - System.currentTimeMillis()) / 1000L;
+                    if (remainingSecs > 0) {
+                        yield new ButtonState("&aEnabled &7(" + com.bx.ultimateDonutSmp.utils.NumberUtils.formatTime(remainingSecs) + " left)", true);
+                    }
+                }
+                yield state(disabled);
+            }
             case "HIDE_ALL_PLAYERS" -> state(data.isHideAllPlayersEnabled());
             case "SCOREBOARD_VISIBILITY" -> state(data.isScoreboardVisible());
             case "AUTO_CONFIRM_TPAS" -> state(data.isTpauto() && data.isAutoTpaHereEnabled());
@@ -320,7 +347,16 @@ public final class PlayerSettingsMenu extends BaseMenu {
             case "TPA_CONFIRM_MENUS" -> state(data.isTpaConfirmMenuEnabled());
             case "LUNAR_TEAMMATES" -> state(data.isLunarTeammatesEnabled());
             case "TPA_HERE_REQUESTS" -> new ButtonState(formatThreeChoice(data.getTpaHereRequestsChoice()), true);
-            case "DISABLE_PHANTOM_SPAWN" -> state(!data.isPhantomEnabled());
+            case "DISABLE_PHANTOM_SPAWN" -> {
+                boolean disabled = !data.isPhantomEnabled();
+                if (disabled && data.getPhantomDisabledUntil() > 0) {
+                    long remainingSecs = (data.getPhantomDisabledUntil() - System.currentTimeMillis()) / 1000L;
+                    if (remainingSecs > 0) {
+                        yield new ButtonState("&aEnabled &7(" + com.bx.ultimateDonutSmp.utils.NumberUtils.formatTime(remainingSecs) + " left)", true);
+                    }
+                }
+                yield state(disabled);
+            }
             case "PAY_CONFIRM_MENUS" -> state(data.isPayConfirmMenuEnabled());
             case "TEAM_CHAT" -> state(plugin.getTeamManager().isTeamChatEnabled(player.getUniqueId()));
             case "DESTROY_PEARL_ON_DEATH" -> state(data.isDestroyPearlOnDeath());
