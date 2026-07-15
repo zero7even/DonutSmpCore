@@ -216,6 +216,12 @@ CUBOID-BINDS:
   SPAWN: []
   # A list configuration for Afk. Available options: Multiple items
   AFK: []
+# Configuration section for Fly System.
+FLY-SYSTEM:
+  # The permission required for regular players/ranks to fly in spawn or cuboids.
+  PLAYER-FLY-PERMISSION: 'ultimatedonutsmp.player.fly'
+  # Disable flight automatically when the player leaves the allowed areas or enters combat.
+  AUTO-DISABLE-OUTSIDE: true
 # Configuration section for Worth Lore.
 WORTH-LORE:
   # Determines whether Enabled is enabled or disabled. Available options: true, false

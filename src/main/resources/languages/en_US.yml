@@ -2757,6 +2757,9 @@ MESSAGES:
   FLY:
     ENABLED: '&a✈ &7FLIGHT MODE &aACTIVATED'
     DISABLED: '&c✗ &7FLIGHT MODE &cDEACTIVATED'
+    PLAYER_RESTRICTED: '&c✗ &7You can only use flight in spawn or cuboids.'
+    PLAYER_IN_COMBAT: '&c✗ &7You cannot fly while in combat.'
+    PLAYER_DISABLED: '&c✗ &7Flight deactivated because you left the allowed area or entered combat.'
   FLYSPEED:
     SET: '&aFLY SPEED SET TO &f{speed}&a.'
     INVALID: '&cINVALID SPEED. PLEASE ENTER A NUMBER FROM 1 TO 10.'

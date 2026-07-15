@@ -983,6 +983,12 @@ FLY:
   ENABLED: '&a✈ &7Flight mode &aactivated'
   # The text or value for Disabled. Available options: Any valid string text
   DISABLED: '&c✗ &7Flight mode &cdeactivated'
+  # Message when player tries to enable fly outside spawn/cuboids
+  PLAYER_RESTRICTED: '&c✗ &7You can only use flight in spawn or cuboids.'
+  # Message when player tries to enable fly in combat
+  PLAYER_IN_COMBAT: '&c✗ &7You cannot fly while in combat.'
+  # Message when player flight is automatically disabled
+  PLAYER_DISABLED: '&c✗ &7Flight deactivated because you left the allowed area or entered combat.'
 # Configuration section for Flyspeed.
 FLYSPEED:
   # The text or value for Set. Available options: Any valid string text
