@@ -98,6 +98,7 @@ public class DatabaseManager {
     private static final String MONGO_SCHEMA_COLLECTION = "_schema";
 
     private final UltimateDonutSmp plugin;
+    private Connection rawConnection;
     private Connection connection;
     private DatabaseType databaseType = DatabaseType.SQLITE;
     private MongoClient mongoClient;
@@ -143,7 +144,8 @@ public class DatabaseManager {
         File legacyDbFile = new File(plugin.getDataFolder(), "data.db");
         migrateLegacyDatabase(legacyDbFile, dbFile);
 
-        connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+        rawConnection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+        connection = wrapConnection(rawConnection);
         try (Statement st = connection.createStatement()) {
             st.execute("PRAGMA journal_mode=WAL");
         }
@@ -170,7 +172,8 @@ public class DatabaseManager {
         }
 
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database + appendJdbcParameters(parameters);
-        connection = DriverManager.getConnection(url, username, password);
+        rawConnection = DriverManager.getConnection(url, username, password);
+        connection = wrapConnection(rawConnection);
     }
 
     private void initializeMongoBridgeConnection() throws Exception {
@@ -3719,9 +3722,9 @@ public class DatabaseManager {
                 schemaCollection.replaceOne(new Document("_id", table), schema, new ReplaceOptions().upsert(true));
             }
 
+            List<Document> documents = readTableDocuments(table);
             MongoCollection<Document> collection = mongoDatabase.getCollection(table);
             collection.deleteMany(new Document());
-            List<Document> documents = readTableDocuments(table);
             if (!documents.isEmpty()) {
                 collection.insertMany(documents);
             }
@@ -4016,4 +4019,60 @@ public class DatabaseManager {
     }
 
     public Connection getConnection() { return connection; }
+
+    private Connection wrapConnection(Connection target) {
+        if (target == null) {
+            return null;
+        }
+        return (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                Connection.class.getClassLoader(),
+                new Class<?>[]{Connection.class},
+                new ThreadSafeConnectionHandler(target)
+        );
+    }
+
+    private static class ThreadSafeConnectionHandler implements java.lang.reflect.InvocationHandler {
+        private final Connection target;
+        private final Object lock = new Object();
+        private Thread transactionOwner = null;
+
+        public ThreadSafeConnectionHandler(Connection target) {
+            this.target = target;
+        }
+
+        @Override
+        public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) throws Throwable {
+            String methodName = method.getName();
+
+            synchronized (lock) {
+                while (transactionOwner != null && transactionOwner != Thread.currentThread()) {
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new SQLException("Thread interrupted while waiting for database lock", e);
+                    }
+                }
+
+                if (methodName.equals("setAutoCommit") && args.length == 1 && args[0] instanceof Boolean) {
+                    boolean autoCommit = (Boolean) args[0];
+                    if (!autoCommit) {
+                        transactionOwner = Thread.currentThread();
+                    } else {
+                        transactionOwner = null;
+                        lock.notifyAll();
+                    }
+                } else if (methodName.equals("commit") || methodName.equals("rollback") || methodName.equals("close")) {
+                    transactionOwner = null;
+                    lock.notifyAll();
+                }
+
+                try {
+                    return method.invoke(target, args);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            }
+        }
+    }
 }
