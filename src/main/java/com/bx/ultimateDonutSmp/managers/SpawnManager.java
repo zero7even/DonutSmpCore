@@ -304,10 +304,7 @@ public class SpawnManager {
         }
 
         if (override != null) {
-            Location overrideDestination = makeSafeDestination(override);
-            if (overrideDestination != null) {
-                return overrideDestination;
-            }
+            return override;
         }
 
         String cuboidName = trimToNull(area.cuboidName());
@@ -374,10 +371,7 @@ public class SpawnManager {
             spawnLocation = LocationUtils.parse(spawnLocationRaw);
         }
         if (spawnLocation != null) {
-            Location safeSpawn = makeSafeDestination(spawnLocation);
-            if (safeSpawn != null) {
-                return safeSpawn;
-            }
+            return spawnLocation;
         }
 
         Location areaDestination = getFirstAreaDestination(AreaType.SPAWN);
@@ -404,10 +398,7 @@ public class SpawnManager {
             afkLocation = LocationUtils.parse(afkLocationRaw);
         }
         if (afkLocation != null) {
-            Location safeAfk = makeSafeDestination(afkLocation);
-            if (safeAfk != null) {
-                return safeAfk;
-            }
+            return afkLocation;
         }
 
         Location areaDestination = getFirstAreaDestination(AreaType.AFK);
@@ -847,7 +838,7 @@ public class SpawnManager {
 
     private boolean hasSetupDestination(AreaType type, String areaPath, ConfigurationSection areaSection) {
         Location location = parseConfiguredAreaLocation(type, areaSection, areaPath);
-        if (location != null && makeSafeDestination(location) != null) {
+        if (location != null) {
             return true;
         }
 
