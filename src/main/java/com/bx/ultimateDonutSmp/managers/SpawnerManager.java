@@ -707,9 +707,30 @@ public class SpawnerManager {
             return List.of();
         }
 
-        List<SpawnerLootEntry> entries = new ArrayList<>(instance.getStoredLootEntries());
-        entries.sort(Comparator.comparingLong(SpawnerLootEntry::getAmount).reversed()
-                .thenComparing(entry -> entry.getMaterial().name()));
+        Map<String, SpawnerLootEntry> merged = new LinkedHashMap<>();
+        SpawnerTypeDefinition definition = getTypeDefinition(instance.getMobTypeKey());
+        if (definition != null) {
+            for (SpawnerTypeDefinition.DropDefinition drop : definition.drops()) {
+                merged.put(drop.key().toUpperCase(Locale.US), new SpawnerLootEntry(drop.key(), drop.material(), 0L));
+            }
+        }
+        for (SpawnerLootEntry entry : instance.getStoredLootEntries()) {
+            merged.put(entry.getKey().toUpperCase(Locale.US), entry);
+        }
+
+        List<SpawnerLootEntry> entries = new ArrayList<>(merged.values());
+        entries.sort((a, b) -> {
+            int cmp = Long.compare(b.getAmount(), a.getAmount());
+            if (cmp != 0) {
+                return cmp;
+            }
+            boolean aDisabled = instance.isLootDisabled(a.getKey());
+            boolean bDisabled = instance.isLootDisabled(b.getKey());
+            if (aDisabled != bDisabled) {
+                return aDisabled ? 1 : -1;
+            }
+            return a.getMaterial().name().compareTo(b.getMaterial().name());
+        });
         return entries;
     }
 
@@ -749,6 +770,9 @@ public class SpawnerManager {
 
         long totalMoved = 0L;
         for (SpawnerLootEntry entry : new ArrayList<>(instance.getStoredLootEntries())) {
+            if (instance.isLootDisabled(entry.getKey())) {
+                continue;
+            }
             long moved = moveMaterialToInventory(player.getInventory(), entry.getMaterial(), entry.getAmount());
             if (moved <= 0L) {
                 continue;
@@ -778,14 +802,20 @@ public class SpawnerManager {
         Location dropLocation = getSpawnerCenter(instance).add(0, 0.5D, 0);
         long dropped = 0L;
         for (SpawnerLootEntry entry : new ArrayList<>(instance.getStoredLootEntries())) {
-            dropped += dropMaterial(dropLocation, entry.getMaterial(), entry.getAmount());
+            if (instance.isLootDisabled(entry.getKey())) {
+                continue;
+            }
+            long droppedForEntry = dropMaterial(dropLocation, entry.getMaterial(), entry.getAmount());
+            if (droppedForEntry > 0L) {
+                instance.removeStoredLoot(entry.getKey(), droppedForEntry);
+                dropped += droppedForEntry;
+            }
         }
 
         if (dropped <= 0L) {
-            return fail("&cthere is no loot stored in that spawner.");
+            return fail("&cthere is no enabled loot stored in that spawner.");
         }
 
-        instance.clearStoredLoot();
         instance.setUpdatedAt(System.currentTimeMillis());
         saveLoot(instance);
         return ok("&adropped &f" + NumberUtils.format(dropped) + "&a stored items on the ground.");
@@ -807,6 +837,9 @@ public class SpawnerManager {
         long soldItems = 0L;
 
         for (SpawnerLootEntry entry : new ArrayList<>(instance.getStoredLootEntries())) {
+            if (instance.isLootDisabled(entry.getKey())) {
+                continue;
+            }
             ItemStack single = new ItemStack(entry.getMaterial(), 1);
             WorthResult worthResult = plugin.getWorthManager().resolveWorth(single);
             if (!worthResult.sellable()) {
@@ -984,6 +1017,9 @@ public class SpawnerManager {
 
         boolean changed = false;
         for (SpawnerTypeDefinition.DropDefinition drop : definition.drops()) {
+            if (instance.isLootDisabled(drop.key())) {
+                continue;
+            }
             double expected = totalRolls * drop.chance() * drop.averageDropAmount();
             long generated = (long) Math.floor(expected);
             double remainder = expected - generated;
@@ -1025,6 +1061,9 @@ public class SpawnerManager {
 
         List<SpawnerLootEntry> entries = new ArrayList<>(instance.getStoredLootEntries());
         for (SpawnerLootEntry entry : entries) {
+            if (instance.isLootDisabled(entry.getKey())) {
+                continue;
+            }
             long storedAmount = entry.getAmount();
             if (storedAmount <= 0L) {
                 continue;
@@ -1267,6 +1306,14 @@ public class SpawnerManager {
             return;
         }
         plugin.getDatabaseManager().replaceSpawnerLoot(instance.getId(), instance.getStoredLootEntries());
+    }
+
+    public void saveSpawnerAndLoot(SpawnerInstance instance) {
+        if (instance == null || isTemporarySpawner(instance)) {
+            return;
+        }
+        plugin.getDatabaseManager().saveSpawner(instance);
+        saveLoot(instance);
     }
 
     private void registerSpawner(SpawnerInstance instance) {

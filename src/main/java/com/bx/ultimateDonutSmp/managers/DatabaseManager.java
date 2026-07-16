@@ -124,6 +124,7 @@ public class DatabaseManager {
             ensureTeamColumns();
             ensureStaffModeColumns();
             ensureHomeColumns();
+            ensureSpawnerColumns();
 
             if (mongoBridgeActive) {
                 importMongoSnapshotIntoSqlite();
@@ -541,6 +542,7 @@ public class DatabaseManager {
             "  last_processed_at INTEGER NOT NULL," +
             "  created_at INTEGER NOT NULL," +
             "  updated_at INTEGER NOT NULL," +
+            "  disabled_loot_keys TEXT DEFAULT ''," +
             "  UNIQUE(world, x, y, z)" +
             ")"
         );
@@ -681,6 +683,10 @@ public class DatabaseManager {
 
     private void ensureHomeColumns() throws SQLException {
         ensureColumnExists("homes", "created_at", "BIGINT DEFAULT 0");
+    }
+
+    private void ensureSpawnerColumns() throws SQLException {
+        ensureColumnExists("spawners", "disabled_loot_keys", "TEXT DEFAULT ''");
     }
 
     private void ensureColumnExists(String table, String column, String definition) throws SQLException {
@@ -2848,7 +2854,7 @@ public class DatabaseManager {
         try (Statement st = connection.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM spawners ORDER BY id ASC")) {
             while (rs.next()) {
-                spawners.add(new SpawnerInstance(
+                SpawnerInstance instance = new SpawnerInstance(
                         rs.getLong("id"),
                         rs.getString("world"),
                         rs.getInt("x"),
@@ -2862,7 +2868,12 @@ public class DatabaseManager {
                         rs.getLong("last_processed_at"),
                         rs.getLong("created_at"),
                         rs.getLong("updated_at")
-                ));
+                );
+                String disabledKeysRaw = rs.getString("disabled_loot_keys");
+                if (disabledKeysRaw != null && !disabledKeysRaw.isBlank()) {
+                    instance.setDisabledLootKeys(List.of(disabledKeysRaw.split(",")));
+                }
+                spawners.add(instance);
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to load managed spawners", e);
@@ -2892,8 +2903,8 @@ public class DatabaseManager {
 
     public long createSpawner(SpawnerInstance instance) {
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO spawners (world, x, y, z, owner_uuid, owner_name, mob_type, stack_amount, access_mode, last_processed_at, created_at, updated_at) " +
-                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO spawners (world, x, y, z, owner_uuid, owner_name, mob_type, stack_amount, access_mode, last_processed_at, created_at, updated_at, disabled_loot_keys) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 Statement.RETURN_GENERATED_KEYS
         )) {
             ps.setString(1, instance.getWorld());
@@ -2908,6 +2919,7 @@ public class DatabaseManager {
             ps.setLong(10, instance.getLastProcessedAt());
             ps.setLong(11, instance.getCreatedAt());
             ps.setLong(12, instance.getUpdatedAt());
+            ps.setString(13, String.join(",", instance.getDisabledLootKeys()));
             ps.executeUpdate();
 
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
@@ -2924,8 +2936,8 @@ public class DatabaseManager {
     public void saveSpawner(SpawnerInstance instance) {
         try (PreparedStatement ps = connection.prepareStatement(
                 "REPLACE INTO spawners " +
-                        "(id, world, x, y, z, owner_uuid, owner_name, mob_type, stack_amount, access_mode, last_processed_at, created_at, updated_at) " +
-                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                        "(id, world, x, y, z, owner_uuid, owner_name, mob_type, stack_amount, access_mode, last_processed_at, created_at, updated_at, disabled_loot_keys) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             ps.setLong(1, instance.getId());
             ps.setString(2, instance.getWorld());
             ps.setInt(3, instance.getX());
@@ -2939,6 +2951,7 @@ public class DatabaseManager {
             ps.setLong(11, instance.getLastProcessedAt());
             ps.setLong(12, instance.getCreatedAt());
             ps.setLong(13, instance.getUpdatedAt());
+            ps.setString(14, String.join(",", instance.getDisabledLootKeys()));
             ps.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save managed spawner " + instance.getId(), e);
