@@ -210,6 +210,16 @@ AFK-SYSTEM:
   AFK-CUBOID-NAME: ''
   # The text or value for Message. Available options: Any valid string text
   MESSAGE: '&7You have been moved to the AFK area for being inactive in the spawn.'
+# Configuration section for Item Drop Prevention.
+PREVENT-ITEM-DROP:
+  # Prevent players from dropping items while in the spawn region.
+  SPAWN: true
+  # Prevent players from dropping items while AFK (either in the AFK area or has AFK status).
+  AFK: true
+  # Bypass permission for admins/staff to allow item dropping.
+  BYPASS-PERMISSION: 'ultimatedonutsmp.preventdrop.bypass'
+  # Message sent to player when their drop is cancelled. Set to '' to disable message.
+  MESSAGE: '&c✗ You are not allowed to drop items in spawn or AFK areas!'
 # Configuration section for Cuboid Binds.
 CUBOID-BINDS:
   # A list configuration for Spawn. Available options: Multiple items
