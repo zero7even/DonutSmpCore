@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
@@ -187,6 +188,7 @@ public class ShardManager {
     private final Map<UUID, Integer> pendingMovementBlocks = new HashMap<>();
     private final Map<UUID, String> lastMatchedCuboid = new HashMap<>();
     private final Map<UUID, ShardCuboidHudState> hudStates = new HashMap<>();
+    private final Map<UUID, Map<UUID, Long>> killRewardCooldowns = new ConcurrentHashMap<>();
 
     public ShardManager(UltimateDonutSmp plugin) {
         this.plugin = plugin;
@@ -255,6 +257,85 @@ public class ShardManager {
         return value instanceof Number number ? number.longValue() : null;
     }
 
+    public long getKillRewardCooldownMillis() {
+        return normalizeKillRewardCooldownMillis(
+                plugin.getConfigManager().getConfig().getLong("SETTINGS.SHARDS-KILL-COOLDOWN-SECONDS", 600L)
+        );
+    }
+
+    /**
+     * Marks a kill reward as claimed for this killer/victim pair when the pair is off cooldown.
+     *
+     * @return {@code true} when the killer may be rewarded for this kill
+     */
+    public boolean tryClaimKillReward(UUID killerId, UUID victimId) {
+        long cooldownMillis = getKillRewardCooldownMillis();
+        if (cooldownMillis <= 0L || killerId == null || victimId == null) {
+            return true;
+        }
+
+        long now = System.currentTimeMillis();
+        Map<UUID, Long> victims = killRewardCooldowns.computeIfAbsent(killerId, id -> new ConcurrentHashMap<>());
+        if (isKillRewardOnCooldown(victims.get(victimId), now, cooldownMillis)) {
+            return false;
+        }
+
+        victims.put(victimId, now);
+        purgeExpiredKillRewardCooldowns(now, cooldownMillis);
+        return true;
+    }
+
+    public long getKillRewardCooldownRemainingSeconds(UUID killerId, UUID victimId) {
+        long cooldownMillis = getKillRewardCooldownMillis();
+        if (cooldownMillis <= 0L || killerId == null || victimId == null) {
+            return 0L;
+        }
+        Map<UUID, Long> victims = killRewardCooldowns.get(killerId);
+        Long lastRewardMillis = victims == null ? null : victims.get(victimId);
+        return killRewardCooldownRemainingSeconds(lastRewardMillis, System.currentTimeMillis(), cooldownMillis);
+    }
+
+    public void sendKillRewardCooldownFeedback(Player killer, UUID victimId) {
+        if (killer == null) {
+            return;
+        }
+        String template = plugin.getConfigManager().getConfig()
+                .getString("SETTINGS.SHARDS-KILL-COOLDOWN-MESSAGE", "");
+        if (template == null || template.isBlank()) {
+            return;
+        }
+        long remainingSeconds = getKillRewardCooldownRemainingSeconds(killer.getUniqueId(), victimId);
+        PlayerSettingUtils.sendActionBar(plugin, killer, template
+                .replace("{time}", NumberUtils.formatTime(remainingSeconds))
+                .replace("{seconds}", String.valueOf(remainingSeconds)));
+    }
+
+    public static long normalizeKillRewardCooldownMillis(long configuredSeconds) {
+        return Math.max(0L, configuredSeconds) * 1000L;
+    }
+
+    public static boolean isKillRewardOnCooldown(Long lastRewardMillis, long nowMillis, long cooldownMillis) {
+        if (cooldownMillis <= 0L || lastRewardMillis == null) {
+            return false;
+        }
+        long elapsed = nowMillis - lastRewardMillis;
+        return elapsed >= 0L && elapsed < cooldownMillis;
+    }
+
+    public static long killRewardCooldownRemainingSeconds(Long lastRewardMillis, long nowMillis, long cooldownMillis) {
+        if (!isKillRewardOnCooldown(lastRewardMillis, nowMillis, cooldownMillis)) {
+            return 0L;
+        }
+        long remainingMillis = cooldownMillis - (nowMillis - lastRewardMillis);
+        return Math.max(1L, (remainingMillis + 999L) / 1000L);
+    }
+
+    private void purgeExpiredKillRewardCooldowns(long nowMillis, long cooldownMillis) {
+        killRewardCooldowns.values().forEach(victims -> victims.values()
+                .removeIf(lastRewardMillis -> !isKillRewardOnCooldown(lastRewardMillis, nowMillis, cooldownMillis)));
+        killRewardCooldowns.values().removeIf(Map::isEmpty);
+    }
+
     public boolean hasBooster(UUID uuid) {
         Long expiry = boosterExpiry.get(uuid);
         if (expiry == null) {
@@ -302,6 +383,75 @@ public class ShardManager {
             return plugin.getConfigManager().getConfig().getInt("SHARDS.BOOSTER-MULTIPLIER", 4);
         }
         return 1;
+    }
+
+    public boolean isBoosterAppliedToKills() {
+        return plugin.getConfigManager().getConfig().getBoolean("SHARDS.BOOSTER-APPLIES-TO-KILLS", true);
+    }
+
+    /**
+     * Booster multiplier used for player kill rewards.
+     *
+     * @return the configured kill multiplier, or {@code 1} when no booster applies
+     */
+    public int getKillMultiplier(UUID uuid) {
+        if (!isBoosterAppliedToKills() || !hasBooster(uuid)) {
+            return 1;
+        }
+        FileConfiguration config = plugin.getConfigManager().getConfig();
+        int killMultiplier = config.getInt("SHARDS.BOOSTER-KILL-MULTIPLIER", 0);
+        return Math.max(1, killMultiplier > 0
+                ? killMultiplier
+                : config.getInt("SHARDS.BOOSTER-MULTIPLIER", 4));
+    }
+
+    /** Multiplies a reward without overflowing when the configured range is extreme. */
+    public static long applyMultiplier(long amount, long multiplier) {
+        long safeAmount = Math.max(0L, amount);
+        long safeMultiplier = Math.max(1L, multiplier);
+        if (safeAmount == 0L || safeMultiplier == 1L) {
+            return safeAmount;
+        }
+        return safeAmount > Long.MAX_VALUE / safeMultiplier ? Long.MAX_VALUE : safeAmount * safeMultiplier;
+    }
+
+    public String formatKillRewardMessage(long amount, long multiplier) {
+        boolean boosted = multiplier > 1;
+        String path = boosted
+                ? "SETTINGS.SHARDS-KILL-MESSAGE-BOOSTED"
+                : "SETTINGS.SHARDS-KILL-MESSAGE";
+        String fallback = boosted
+                ? "+{amount_formatted} &7(&ax{multiplier}&7)"
+                : "+{amount_formatted}";
+
+        String message = plugin.getConfigManager().getConfig().getString(path, fallback);
+        if (message == null || message.isBlank()) {
+            message = fallback;
+        }
+        return message
+                .replace("{shards}", String.valueOf(amount))
+                .replace("{amount}", String.valueOf(amount))
+                .replace("{shards_formatted}", plugin.getCurrencyManager().formatShards(amount))
+                .replace("{amount_formatted}", plugin.getCurrencyManager().formatShards(amount))
+                .replace("{multiplier}", String.valueOf(Math.max(1L, multiplier)));
+    }
+
+    public void sendKillRewardFeedback(Player killer, long amount, long multiplier) {
+        if (killer == null) {
+            return;
+        }
+
+        PlayerSettingUtils.sendActionBar(plugin, killer, formatKillRewardMessage(amount, multiplier));
+        if (multiplier <= 1) {
+            // Unboosted kills stay silent, exactly as before the booster applied here.
+            return;
+        }
+
+        String sound = plugin.getConfigManager().getSound("SHARDS.REWARD-BOOSTED");
+        if (sound == null || sound.isBlank()) {
+            sound = "minecraft:entity.player.levelup|0.85|1.45";
+        }
+        SoundUtils.play(killer, sound);
     }
 
     public void syncBooster(Player player) {

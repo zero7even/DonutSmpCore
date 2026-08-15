@@ -6,13 +6,11 @@ import com.bx.ultimateDonutSmp.models.ThreeChoice;
 import com.bx.ultimateDonutSmp.models.TwoChoice;
 import com.bx.ultimateDonutSmp.utils.ColorUtils;
 import com.bx.ultimateDonutSmp.utils.ItemUtils;
-import com.bx.ultimateDonutSmp.utils.MobSpawnPolicy;
 import com.bx.ultimateDonutSmp.utils.PermissionUtils;
+import com.bx.ultimateDonutSmp.utils.PlayerSettingDefaults;
 import com.bx.ultimateDonutSmp.utils.SoundUtils;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -71,7 +69,8 @@ public final class PlayerSettingsMenu extends BaseMenu {
         if (buttons == null) {
             return;
         }
-        if (buttons.contains("QUICK_AUCTION_PURCHASE") || buttons.contains("QUICK_AUCTION_SELL")) {
+        if (containsEnabledButton(buttons, "QUICK_AUCTION_PURCHASE")
+                || containsEnabledButton(buttons, "QUICK_AUCTION_SELL")) {
             loadPreference(player);
         }
 
@@ -95,26 +94,30 @@ public final class PlayerSettingsMenu extends BaseMenu {
             return;
         }
 
-        SoundUtils.play(player, plugin.getConfigManager().getSound("MENUS.BUTTON-CLICK"));
-
         ConfigurationSection section = plugin.getConfigManager().getMenus()
                 .getConfigurationSection(MENU_PATH + ".BUTTONS." + key);
+        if (!PlayerSettingDefaults.isOptionEnabled(section)) {
+            return;
+        }
+
+        SoundUtils.play(player, plugin.getConfigManager().getSound("MENUS.BUTTON-CLICK"));
+
         if (section != null && section.contains("COMMAND")) {
             String commandStr = section.getString("COMMAND");
             if (commandStr != null && !commandStr.isBlank()) {
                 commandStr = commandStr.replace("{player}", player.getName()).replace("%player%", player.getName());
                 if (commandStr.toLowerCase(java.util.Locale.ROOT).startsWith("[console] ")) {
                     String cmd = commandStr.substring(10).trim();
-                    org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), cmd);
+                    plugin.getSpigotScheduler().dispatchConsoleCommand(cmd);
                 } else if (commandStr.toLowerCase(java.util.Locale.ROOT).startsWith("[player] ")) {
                     String cmd = commandStr.substring(9).trim();
                     if (cmd.startsWith("/")) cmd = cmd.substring(1);
-                    player.performCommand(cmd);
+                    plugin.getSpigotScheduler().dispatchPlayerCommand(player, cmd);
                 } else {
                     String cmd = commandStr.startsWith("/") ? commandStr.substring(1) : commandStr;
-                    player.performCommand(cmd);
+                    plugin.getSpigotScheduler().dispatchPlayerCommand(player, cmd);
                 }
-                org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.getSpigotScheduler().runEntity(player, () -> {
                     if (player.isOnline()) {
                         build(player);
                     }
@@ -156,7 +159,6 @@ public final class PlayerSettingsMenu extends BaseMenu {
             case "DISABLE_MOB_SPAWN" -> {
                 data.setMobSpawnEnabled(!data.isMobSpawnEnabled());
                 if (!data.isMobSpawnEnabled()) {
-                    clearNearbyHostileMobs(player);
                     long limitSeconds = plugin.getConfigManager().getConfig().getLong("SETTINGS.DISABLE-MOB-SPAWN-LIMIT-SECONDS", -1L);
                     if (limitSeconds > 0) {
                         data.setMobSpawnDisabledUntil(System.currentTimeMillis() + (limitSeconds * 1000L));
@@ -558,23 +560,6 @@ public final class PlayerSettingsMenu extends BaseMenu {
         );
     }
 
-    private void clearNearbyHostileMobs(Player player) {
-        double radius = plugin.getConfigManager().getConfig().getDouble("SETTINGS.MOB-SPAWN-RADIUS", 50);
-        double radiusSquared = radius * radius;
-        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
-            if (!(entity instanceof LivingEntity living)) {
-                continue;
-            }
-            if (!MobSpawnPolicy.shouldRemoveFromPeriodicCleanup(plugin, living)) {
-                continue;
-            }
-            if (living.getLocation().distanceSquared(player.getLocation()) > radiusSquared) {
-                continue;
-            }
-            living.remove();
-        }
-    }
-
     private void toggle(Player player, String label, boolean enabled, BooleanSetter setter) {
         setter.set(enabled);
         sendToggleMessage(player, label, enabled);
@@ -621,7 +606,14 @@ public final class PlayerSettingsMenu extends BaseMenu {
         return TwoChoice.values()[nextOrdinal];
     }
 
+    private boolean containsEnabledButton(ConfigurationSection buttons, String key) {
+        return buttons.contains(key) && PlayerSettingDefaults.isOptionEnabled(buttons, key);
+    }
+
     private boolean shouldRenderButton(String key, ConfigurationSection section) {
+        if (!PlayerSettingDefaults.isOptionEnabled(section)) {
+            return false;
+        }
         if (section != null && (section.contains("COMMAND") || section.contains("STATUS-PLACEHOLDER"))) {
             return true;
         }

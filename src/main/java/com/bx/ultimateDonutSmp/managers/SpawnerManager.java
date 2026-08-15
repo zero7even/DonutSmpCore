@@ -50,11 +50,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
 public class SpawnerManager {
+
+    public static final String SILK_TOUCH_BYPASS_PERMISSION = "ultimatedonutsmp.spawner.bypass";
+    public static final String SILK_TOUCH_REQUIRED_MESSAGE = "&cYou need Silk Touch to break this spawner!";
 
     public record ActionResult(boolean success, String message, int consumedAmount, boolean fullyDestroyed) {
         public ActionResult(boolean success, String message, int consumedAmount) {
@@ -86,6 +90,7 @@ public class SpawnerManager {
     private final AtomicLong temporarySpawnerIdSequence = new AtomicLong(-1L);
     private final Set<Long> temporarySpawnerIds = new HashSet<>();
     private final Map<Long, List<SpawnerLootEntry>> pendingLootMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, SpawnerStorageMenu> openStorageMenus = new java.util.concurrent.ConcurrentHashMap<>();
     private boolean serverWipeMode;
     private boolean enabled;
     private boolean xpEnabled;
@@ -274,6 +279,24 @@ public class SpawnerManager {
 
     public boolean isCancelMobSpawn() {
         return cancelMobSpawn;
+    }
+
+    public boolean isRequireSilkTouch() {
+        return requireSilkTouch;
+    }
+
+    public boolean hasSilkTouchAccess(Player player) {
+        if (player == null) {
+            return false;
+        }
+        if (player.getGameMode() == GameMode.CREATIVE
+                || PermissionUtils.has(player, SILK_TOUCH_BYPASS_PERMISSION)) {
+            return true;
+        }
+        ItemStack heldTool = player.getInventory().getItemInMainHand();
+        return heldTool != null
+                && heldTool.getType().name().endsWith("_PICKAXE")
+                && heldTool.containsEnchantment(org.bukkit.enchantments.Enchantment.SILK_TOUCH);
     }
 
     public boolean isXpEnabled() {
@@ -818,22 +841,8 @@ public class SpawnerManager {
             return fail("&cyou do not have permission to break that spawner.");
         }
 
-        boolean hasSilkTouch = false;
-        if (player != null) {
-            if (player.getGameMode() == GameMode.CREATIVE
-                    || PermissionUtils.has(player, "ultimatedonutsmp.admin.spawner")
-                    || PermissionUtils.has(player, "ultimatedonutsmp.spawner.bypass")) {
-                hasSilkTouch = true;
-            } else {
-                ItemStack heldTool = player.getInventory().getItemInMainHand();
-                if (heldTool != null && heldTool.getType().name().endsWith("_PICKAXE") && heldTool.containsEnchantment(org.bukkit.enchantments.Enchantment.SILK_TOUCH)) {
-                    hasSilkTouch = true;
-                }
-            }
-        }
-
-        if (requireSilkTouch && !hasSilkTouch) {
-            return fail("&cYou must use a Silk Touch pickaxe to break spawners.");
+        if (requireSilkTouch && !hasSilkTouchAccess(player)) {
+            return fail(SILK_TOUCH_REQUIRED_MESSAGE);
         }
 
         long totalStack = instance.getStackAmount();
@@ -1280,12 +1289,42 @@ public class SpawnerManager {
         refreshOpenStorageMenus();
     }
 
+    public void registerOpenStorageMenu(Player player, SpawnerStorageMenu menu) {
+        if (player == null || menu == null) {
+            return;
+        }
+        openStorageMenus.put(player.getUniqueId(), menu);
+    }
+
+    public void unregisterOpenStorageMenu(Player player, SpawnerStorageMenu menu) {
+        if (player == null || menu == null) {
+            return;
+        }
+        openStorageMenus.remove(player.getUniqueId(), menu);
+    }
+
     public void refreshOpenStorageMenus() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            Inventory top = player.getOpenInventory().getTopInventory();
-            if (top != null && top.getHolder() instanceof SpawnerStorageMenu storageMenu) {
-                storageMenu.refresh(player);
+        if (openStorageMenus.isEmpty()) {
+            return;
+        }
+
+        // this runs on the global/generation thread, so look the menus up from our own
+        // registry instead of asking every open inventory for its holder: block backed
+        // inventories (shulker box, chest, ...) read the world to answer that, which
+        // Folia refuses outside the region owning the block.
+        for (Map.Entry<UUID, SpawnerStorageMenu> entry : openStorageMenus.entrySet()) {
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null || !player.isOnline()) {
+                openStorageMenus.remove(entry.getKey(), entry.getValue());
+                continue;
             }
+
+            SpawnerStorageMenu menu = entry.getValue();
+            plugin.getSpigotScheduler().runEntity(player, () -> {
+                if (player.isOnline()) {
+                    menu.refresh(player);
+                }
+            });
         }
     }
 

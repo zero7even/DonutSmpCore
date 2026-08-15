@@ -1,12 +1,12 @@
 package com.bx.ultimateDonutSmp.managers;
 
 import com.bx.ultimateDonutSmp.UltimateDonutSmp;
+import com.bx.ultimateDonutSmp.models.Bounty;
 import com.bx.ultimateDonutSmp.models.PlayerData;
 import com.bx.ultimateDonutSmp.utils.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -30,7 +30,8 @@ public class LeaderboardManager {
         KILL_STREAK("killStreak"),
         HIGHEST_KILL_STREAK("highestKillStreak"),
         MONEY_SPENT("moneySpent"),
-        MONEY_MADE("moneyMade");
+        MONEY_MADE("moneyMade"),
+        BOUNTIES("bounties");
 
         private final String configKey;
 
@@ -46,14 +47,22 @@ public class LeaderboardManager {
     public record LeaderboardEntry(int position, PlayerData playerData) {
     }
 
-    private record CachedLeaderboard(long cachedAtMillis, List<PlayerData> players) {
-        private boolean isExpired(long now) {
-            return now - cachedAtMillis >= CACHE_TTL_MS;
+    private record CachedLeaderboard(long cachedAtMillis, List<PlayerData> players, boolean stale) {
+        private CachedLeaderboard(long cachedAtMillis, List<PlayerData> players) {
+            this(cachedAtMillis, players, false);
+        }
+
+        private boolean needsRefresh(long now) {
+            return stale || now - cachedAtMillis >= CACHE_TTL_MS;
+        }
+
+        private CachedLeaderboard markStale() {
+            return stale ? this : new CachedLeaderboard(cachedAtMillis, players, true);
         }
     }
 
     private final UltimateDonutSmp plugin;
-    private final Map<LeaderboardType, CachedLeaderboard> leaderboardCache = new EnumMap<>(LeaderboardType.class);
+    private final Map<LeaderboardType, CachedLeaderboard> leaderboardCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.Set<LeaderboardType> refreshingTypes = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public LeaderboardManager(UltimateDonutSmp plugin) {
@@ -105,6 +114,7 @@ public class LeaderboardManager {
             case HIGHEST_KILL_STREAK -> NumberUtils.format(data.getHighestKillStreak());
             case MONEY_SPENT -> formatCurrencyValue(CurrencyManager.CurrencyType.MONEY, data.getMoneySpent(), compact, includeCurrencySymbol);
             case MONEY_MADE -> formatCurrencyValue(CurrencyManager.CurrencyType.MONEY, data.getMoneyMade(), compact, includeCurrencySymbol);
+            case BOUNTIES -> formatCurrencyValue(CurrencyManager.CurrencyType.MONEY, bountyAmount(data), compact, includeCurrencySymbol);
         };
     }
 
@@ -154,14 +164,20 @@ public class LeaderboardManager {
         return numericValue(type, data);
     }
 
+    // Keeps the last snapshot readable while a refresh runs; dropping it here made the
+    // next menu open render "no leaderboard data" until the async reload finished.
     public void invalidate(LeaderboardType type) {
-        if (type != null) {
-            leaderboardCache.remove(type);
+        if (type == null) {
+            return;
         }
+        leaderboardCache.computeIfPresent(type, (key, cached) -> cached.markStale());
     }
 
     public void invalidateAll() {
-        leaderboardCache.clear();
+        leaderboardCache.replaceAll((key, cached) -> cached.markStale());
+        for (LeaderboardType type : LeaderboardType.values()) {
+            triggerAsyncRefresh(type);
+        }
     }
 
     private List<PlayerData> getSortedPlayers(LeaderboardType type) {
@@ -175,7 +191,7 @@ public class LeaderboardManager {
             return List.of();
         }
 
-        if (cachedLeaderboard.isExpired(now)) {
+        if (cachedLeaderboard.needsRefresh(now)) {
             triggerAsyncRefresh(type);
         }
         return cachedLeaderboard.players();
@@ -197,6 +213,11 @@ public class LeaderboardManager {
 
                 List<PlayerData> players = new ArrayList<>(merged.values());
                 players.removeIf(data -> data == null || data.getUsername() == null || data.getUsername().isBlank());
+                if (type == LeaderboardType.BOUNTIES) {
+                    // Every player carries a zero bounty, so an unfiltered board would pad the
+                    // ranking with players nobody placed a bounty on.
+                    players.removeIf(data -> bountyAmount(data) <= 0D);
+                }
                 players.sort(comparator(type));
 
                 List<PlayerData> snapshot = List.copyOf(players);
@@ -232,7 +253,22 @@ public class LeaderboardManager {
             case HIGHEST_KILL_STREAK -> data.getHighestKillStreak();
             case MONEY_SPENT -> data.getMoneySpent();
             case MONEY_MADE -> data.getMoneyMade();
+            case BOUNTIES -> bountyAmount(data);
         };
+    }
+
+    private double bountyAmount(PlayerData data) {
+        if (data == null || data.getUuid() == null) {
+            return 0D;
+        }
+
+        BountyManager bountyManager = plugin.getBountyManager();
+        if (bountyManager == null) {
+            return 0D;
+        }
+
+        Bounty bounty = bountyManager.getBounty(data.getUuid());
+        return bounty == null ? 0D : bounty.getAmount();
     }
 
     private String formatCurrencyValue(

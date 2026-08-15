@@ -164,6 +164,18 @@ SETTINGS:
   SHARDS-PER-KILL: 1
   # The text or value for Shards Kill Message. Available options: Any valid string text
   SHARDS-KILL-MESSAGE: '&#A303F9+{shards} Shard'
+  # The text or value for Shards Kill Message Boosted, shown instead of Shards Kill
+  # Message while a shard booster multiplies the kill reward. Supports {multiplier}.
+  # Available options: Any valid string text
+  SHARDS-KILL-MESSAGE-BOOSTED: '&#A303F9+{shards} Shards &7(&ax{multiplier}&7)'
+  # The numerical value for Shards Kill Cooldown Seconds. Blocks repeated kill rewards
+  # against the same victim until the cooldown expires. Set to 0 to disable.
+  # Available options: Any valid integer
+  SHARDS-KILL-COOLDOWN-SECONDS: 600
+  # The text or value for Shards Kill Cooldown Message, shown when the kill reward is
+  # skipped because the same victim was killed recently. Leave empty to stay silent.
+  # Available options: Any valid string text
+  SHARDS-KILL-COOLDOWN-MESSAGE: '&cNo Shard &7(killed recently, {time} left)'
   # The decimal value for Money Per Default. Available options: Any decimal number
   MONEY-PER-DEFAULT: 1000.0
   # The text or value for Sell Message. Available options: Any valid string text
@@ -195,6 +207,9 @@ SETTINGS:
 | `SETTINGS.HOME-DEFAULT` | `int` | Any valid integer number | `'2'` | Default maximum `/sethome` limit for non-donor players. |
 | `SETTINGS.SHARDS-PER-KILL` | `int` | Any valid integer number | `'1'` | Configures the technical `SHARDS-PER-KILL` parameter for `SETTINGS.SHARDS-PER-KILL` in `config.yml`. |
 | `SETTINGS.SHARDS-KILL-MESSAGE` | `str` | Any string text | `'&#A303F9+{shards} Shard'` | Configures the technical `SHARDS-KILL-MESSAGE` parameter for `SETTINGS.SHARDS-KILL-MESSAGE` in `config.yml`. |
+| `SETTINGS.SHARDS-KILL-MESSAGE-BOOSTED` | `str` | Any string text | `'&#A303F9+{shards} Shards &7(&ax{multiplier}&7)'` | Action bar shown instead of `SHARDS-KILL-MESSAGE` while a shard booster multiplies the kill reward. Supports `{multiplier}`. |
+| `SETTINGS.SHARDS-KILL-COOLDOWN-SECONDS` | `int` | Any valid integer number | `'600'` | Time a killer must wait before the same victim rewards shards again. Set to `0` to reward every kill. |
+| `SETTINGS.SHARDS-KILL-COOLDOWN-MESSAGE` | `str` | Any string text | `'&cNo Shard &7(killed recently, {time} left)'` | Action bar shown when a kill reward is skipped by the cooldown. Supports `{time}` and `{seconds}`. Leave empty to stay silent. |
 | `SETTINGS.MONEY-PER-DEFAULT` | `float` | Any decimal number | `'1000.0'` | Configures the technical `MONEY-PER-DEFAULT` parameter for `SETTINGS.MONEY-PER-DEFAULT` in `config.yml`. |
 | `SETTINGS.SELL-MESSAGE` | `str` | Any string text | `'&a+$%price%'` | Configures the technical `SELL-MESSAGE` parameter for `SETTINGS.SELL-MESSAGE` in `config.yml`. |
 | `SETTINGS.SPAWN-MENU` | `bool` | `true`, `false` | `true` | Configures the technical `SPAWN-MENU` parameter for `SETTINGS.SPAWN-MENU` in `config.yml`. |
@@ -1000,6 +1015,8 @@ SHARDS:
 | `SHARDS.CUBOIDS.REGIONS.spawn.PAUSED-MESSAGE` | `str` | Any string text | `'&eMove to keep earning shards &7(%m...'` | Configures the technical `PAUSED-MESSAGE` parameter for `SHARDS.CUBOIDS.REGIONS.spawn.PAUSED-MESSAGE` in `config.yml`. |
 | `SHARDS.CUBOIDS.REGIONS.spawn.AFK-PAUSED-MESSAGE` | `str` | Any string text | `'&cYou are AFK. Move to resume shard...'` | Configures the technical `AFK-PAUSED-MESSAGE` parameter for `SHARDS.CUBOIDS.REGIONS.spawn.AFK-PAUSED-MESSAGE` in `config.yml`. |
 | `SHARDS.CUBOIDS.REGIONS.spawn.EXCLUDED-WORLD-MESSAGE` | `str` | Any string text | `'&cShards are disabled in this world'` | Configures the technical `EXCLUDED-WORLD-MESSAGE` parameter for `SHARDS.CUBOIDS.REGIONS.spawn.EXCLUDED-WORLD-MESSAGE` in `config.yml`. |
+| `SHARDS.BOOSTER-APPLIES-TO-KILLS` | `bool` | `true`, `false` | `true` | Whether an active shard booster also multiplies player kill rewards. Set to `false` to keep the booster on passive and cuboid shards only. |
+| `SHARDS.BOOSTER-KILL-MULTIPLIER` | `int` | Any valid integer number | `'0'` | Separate booster multiplier used only for kill rewards. Set to `0` to reuse `SHARDS.BOOSTER-MULTIPLIER`. |
 | *(10 additional sub-keys configured in section)* | | | | |
 
 ### 3. Practical Setup Example
@@ -1267,3 +1284,89 @@ TABLIST:
 
 ---
 
+## Section: `CLEAR-LAG`
+
+### 1. Commented Setup Code Example
+
+```yaml
+CLEAR-LAG:
+  # Determines whether Enabled is enabled or disabled. Available options: true, false
+  ENABLED: true
+  # The numerical value for Every. Available options: Any valid integer
+  EVERY: 5
+  # Determines whether Animals is enabled or disabled. Available options: true, false
+  ANIMALS: false
+  # Determines whether Monsters is enabled or disabled. Available options: true, false
+  MONSTERS: false
+  # Determines whether Dropped Items is enabled or disabled. Available options: true, false
+  DROPPED-ITEMS: true
+  # The numerical value for Min Item Age Seconds. Dropped items younger than this are kept,
+  # so items dropped just before a cleanup are not wiped. Set to 0 to disable the delay.
+  # Available options: Any valid integer
+  MIN-ITEM-AGE-SECONDS: 60
+  # Configuration section for Excluded Worlds.
+  EXCLUDED-WORLDS:
+  - duels
+  EXCLUDE-NAMED: true
+  EXCLUDE-TAMED: true
+  EXCLUDE-VILLAGERS: true
+  # Configuration section for Excluded Entity Types. Entity types listed here are never
+  # cleared, for example ALLAY or IRON_GOLEM.
+  EXCLUDED-ENTITY-TYPES: []
+  # Configuration section for Excluded Item Materials. Dropped items of these materials are
+  # never cleared, for example NETHERITE_INGOT or ELYTRA.
+  EXCLUDED-ITEM-MATERIALS: []
+# Configuration section for Combat Manager.
+```
+
+### 2. Key Options & Technical Breakdown
+
+| Option / Key Path | Data Type | Allowed Values | Default | Technical Function & Setup Guide |
+| :--- | :--- | :--- | :--- | :--- |
+| `CLEAR-LAG.ENABLED` | `bool` | `true`, `false` | `true` | Master switch for the cleanup task and `/clearlag`. The `CLEAR_LAG` feature toggle must also be enabled. |
+| `CLEAR-LAG.EVERY` | `int` | Any valid integer | `5` | Minutes between cleanup runs. Countdown warnings are broadcast 60, 30, 15, 10, 5, 4, 3, 2 and 1 second before each run. Values below `1` are treated as `1`. |
+| `CLEAR-LAG.ANIMALS` | `bool` | `true`, `false` | `false` | Removes passive animals during a cleanup run. |
+| `CLEAR-LAG.MONSTERS` | `bool` | `true`, `false` | `false` | Removes monsters, slimes and flying hostiles during a cleanup run. |
+| `CLEAR-LAG.DROPPED-ITEMS` | `bool` | `true`, `false` | `true` | Removes dropped item entities during a cleanup run. |
+| `CLEAR-LAG.MIN-ITEM-AGE-SECONDS` | `int` | Any valid integer | `60` | Grace period for dropped items. Items that have existed for fewer seconds than this are skipped, so items dropped shortly before a run survive until the next one. Set to `0` to clear items regardless of age. |
+| `CLEAR-LAG.EXCLUDED-WORLDS` | `list` | List of configured items/strings | `['duels']` | World names that are skipped entirely, so nothing inside them is ever cleared. |
+| `CLEAR-LAG.EXCLUDE-NAMED` | `bool` | `true`, `false` | `true` | Skips entities that carry a custom name. |
+| `CLEAR-LAG.EXCLUDE-TAMED` | `bool` | `true`, `false` | `true` | Skips tamed entities such as pets and horses. |
+| `CLEAR-LAG.EXCLUDE-VILLAGERS` | `bool` | `true`, `false` | `true` | Skips villagers, wandering traders and NPCs. |
+| `CLEAR-LAG.EXCLUDED-ENTITY-TYPES` | `list` | List of configured items/strings | `[]` | Entity type names that are never cleared, for example `ALLAY` or `IRON_GOLEM`. Matched case-insensitively against the entity type. |
+| `CLEAR-LAG.EXCLUDED-ITEM-MATERIALS` | `list` | List of configured items/strings | `[]` | Material names that are never cleared when they lie on the ground, for example `NETHERITE_INGOT` or `ELYTRA`. Matched case-insensitively against the dropped stack. |
+
+### 3. Practical Setup Example
+
+```yaml
+CLEAR-LAG:
+  # Determines whether Enabled is enabled or disabled. Available options: true, false
+  ENABLED: true
+  # The numerical value for Every. Available options: Any valid integer
+  EVERY: 5
+  # Determines whether Animals is enabled or disabled. Available options: true, false
+  ANIMALS: false
+  # Determines whether Monsters is enabled or disabled. Available options: true, false
+  MONSTERS: false
+  # Determines whether Dropped Items is enabled or disabled. Available options: true, false
+  DROPPED-ITEMS: true
+  # The numerical value for Min Item Age Seconds. Dropped items younger than this are kept,
+  # so items dropped just before a cleanup are not wiped. Set to 0 to disable the delay.
+  # Available options: Any valid integer
+  MIN-ITEM-AGE-SECONDS: 60
+  # Configuration section for Excluded Worlds.
+  EXCLUDED-WORLDS:
+  - duels
+  EXCLUDE-NAMED: true
+  EXCLUDE-TAMED: true
+  EXCLUDE-VILLAGERS: true
+  # Configuration section for Excluded Entity Types. Entity types listed here are never
+  # cleared, for example ALLAY or IRON_GOLEM.
+  EXCLUDED-ENTITY-TYPES: []
+  # Configuration section for Excluded Item Materials. Dropped items of these materials are
+  # never cleared, for example NETHERITE_INGOT or ELYTRA.
+  EXCLUDED-ITEM-MATERIALS: []
+# Configuration section for Combat Manager.
+```
+
+---
